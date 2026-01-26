@@ -26,5 +26,8 @@ async def get_db() -> AsyncSession:
 
 @asynccontextmanager
 async def get_checkpointer():
-    async with AsyncPostgresSaver.from_conn_string(app_settings.database_url) as checkpointer:
+    # AsyncPostgresSaver expects a native psycopg3 connection string (postgresql://)
+    # not the SQLAlchemy dialect URL (postgresql+psycopg://)
+    conn_string = app_settings.database_url.replace("postgresql+psycopg://", "postgresql://")
+    async with AsyncPostgresSaver.from_conn_string(conn_string) as checkpointer:
         yield checkpointer

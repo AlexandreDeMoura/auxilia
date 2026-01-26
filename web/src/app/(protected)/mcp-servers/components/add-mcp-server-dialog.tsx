@@ -43,6 +43,8 @@ export default function AddMCPServerDialog({
 		description: "",
 		authType: "none" as MCPAuthType,
 		apiKey: "",
+		oauthClientId: "",
+		oauthClientSecret: "",
 	});
 
 	const validateCustomForm = () => {
@@ -54,6 +56,11 @@ export default function AddMCPServerDialog({
 
 		if (!customForm.url.trim()) {
 			newErrors.url = "Server address is required.";
+		}
+
+		// OAuth validation: can't have client secret without client id
+		if (customForm.authType === "oauth2" && customForm.oauthClientSecret && !customForm.oauthClientId) {
+			newErrors.oauthClientId = "Client ID is required when providing a Client Secret.";
 		}
 
 		setErrors(newErrors);
@@ -75,6 +82,8 @@ export default function AddMCPServerDialog({
 				authType: customForm.authType,
 				description: customForm.description || undefined,
 				apiKey: customForm.apiKey || undefined,
+				oauthClientId: customForm.oauthClientId || undefined,
+				oauthClientSecret: customForm.oauthClientSecret || undefined,
 			};
 
 			const response = await api.post("/mcp-servers", payload);
@@ -88,6 +97,8 @@ export default function AddMCPServerDialog({
 				description: "",
 				authType: "none",
 				apiKey: "",
+				oauthClientId: "",
+				oauthClientSecret: "",
 			});
 			setErrors({});
 
@@ -248,25 +259,41 @@ export default function AddMCPServerDialog({
 									</div>
 								)}
 
-								{/* {customForm.authType === "oauth2" && (
+								{customForm.authType === "oauth2" && (
 									<div className="space-y-4">
+										<p className="text-sm text-muted-foreground">
+											Leave empty to use Dynamic Client Registration (DCR). Only fill these if your MCP server requires pre-registered credentials.
+										</p>
 										<div className="space-y-2">
-											<Label htmlFor="clientId">Client ID</Label>
+											<Label htmlFor="oauthClientId">Client ID (optional)</Label>
 											<Input
-												id="clientId"
+												id="oauthClientId"
 												placeholder="Enter your OAuth client ID"
+												value={customForm.oauthClientId}
+												onChange={(e) =>
+													handleCustomFormChange("oauthClientId", e.target.value)
+												}
+												className={errors.oauthClientId ? "border-red-500" : ""}
+												aria-invalid={!!errors.oauthClientId}
 											/>
+											{errors.oauthClientId && (
+												<p className="text-sm text-red-600">{errors.oauthClientId}</p>
+											)}
 										</div>
 										<div className="space-y-2">
-											<Label htmlFor="clientSecret">Client Secret</Label>
+											<Label htmlFor="oauthClientSecret">Client Secret (optional)</Label>
 											<Input
-												id="clientSecret"
+												id="oauthClientSecret"
 												type="password"
 												placeholder="Enter your OAuth client secret"
+												value={customForm.oauthClientSecret}
+												onChange={(e) =>
+													handleCustomFormChange("oauthClientSecret", e.target.value)
+												}
 											/>
 										</div>
 									</div>
-								)} */}
+								)}
 
 								<div className="flex justify-end gap-3 pt-2">
 									<Button type="submit" disabled={isSubmitting}>

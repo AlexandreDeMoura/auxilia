@@ -18,6 +18,9 @@ export interface MCPServerCreate {
 	iconUrl?: string;
 	description?: string;
 	apiKey?: string;
+	// OAuth credentials for pre-registered OAuth clients
+	oauthClientId?: string;
+	oauthClientSecret?: string;
 }
 
 export interface MCPServerUpdate {

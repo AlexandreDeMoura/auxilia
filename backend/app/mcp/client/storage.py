@@ -5,17 +5,24 @@ from datetime import datetime, timezone, timedelta
 from pydantic import BaseModel
 
 
-
 class StoredToken(BaseModel):
     token_payload: OAuthToken
     expires_at: datetime
 
 
+class OAuthStateData(BaseModel):
+    """Data stored against an OAuth state parameter."""
+    user_id: str
+    mcp_server_id: str
+    verifier: str
+
+
 class RedisTokenStorage(TokenStorage):
-    """Redis-backed token storage."""
+    """Redis-backed token storage keyed by user_id:mcp_server_id."""
 
     def __init__(
         self,
+        user_id: str,
         mcp_server_id: str,
         *,
         host: str = "localhost",
@@ -24,6 +31,7 @@ class RedisTokenStorage(TokenStorage):
         prefix: str = "mcp",
         redis: Redis | None = None,
     ):
+        self.user_id = user_id
         self.mcp_server_id = mcp_server_id
         self.redis: Redis = redis or Redis(
             host=host, port=port, db=db, decode_responses=True
@@ -31,10 +39,7 @@ class RedisTokenStorage(TokenStorage):
         self._prefix = prefix
 
     def _base(self) -> str:
-        return f"{self._prefix}:{self.mcp_server_id}"
-
-    def _verifiers_key(self) -> str:
-        return f"{self._base()}:verifiers"
+        return f"{self._prefix}:{self.user_id}:{self.mcp_server_id}"
 
     def _tokens_key(self) -> str:
         return f"{self._base()}:tokens"
@@ -45,28 +50,22 @@ class RedisTokenStorage(TokenStorage):
     def _oauth_metadata_key(self) -> str:
         return f"{self._base()}:oauth_metadata"
 
-    async def get_verifier(self, state: str) -> str | None:
-        return await self.redis.hget(self._verifiers_key(), state)
-
-    async def set_verifier(self, state: str, verifier: str) -> None:
-        await self.redis.hset(self._verifiers_key(), state, verifier)
-
-    async def delete_verifier(self, state: str) -> None:
-        await self.redis.hdel(self._verifiers_key(), state)
+    @staticmethod
+    def _state_key(state: str, prefix: str = "mcp") -> str:
+        """Global state key (not scoped to user/server since we need to look up by state)."""
+        return f"{prefix}:oauth_states:{state}"
 
     async def get_tokens(self) -> OAuthToken | None:
         stored_token = await self.redis.get(self._tokens_key())
         if not stored_token:
-            print(f"No stored token for MCP server {self.mcp_server_id}")
+            print(f"No stored token for user {self.user_id} and MCP server {self.mcp_server_id}")
             return None
 
         stored_token = StoredToken.model_validate_json(stored_token)
         
         if stored_token.expires_at is not None:
-            print(f"Stored token for MCP server {self.mcp_server_id} expires at {stored_token.expires_at}")
+            print(f"Stored token for user {self.user_id} and MCP server {self.mcp_server_id} expires at {stored_token.expires_at}")
             now = datetime.now(timezone.utc)
-            # if now >= stored_token.expires_at:
-            #     return None
 
             if stored_token.token_payload.expires_in is not None:
                 remaining = stored_token.expires_at - now
@@ -77,7 +76,6 @@ class RedisTokenStorage(TokenStorage):
         return stored_token.token_payload
 
     async def set_tokens(self, tokens: OAuthToken) -> None:
-
         expires_at: datetime | None = None
 
         if tokens.expires_in is not None:
@@ -116,6 +114,31 @@ class RedisTokenStorage(TokenStorage):
             return None
         return OAuthMetadata.model_validate_json(raw)
 
+    async def set_verifier(self, state: str, verifier: str) -> None:
+        """Store OAuth state data including user_id, mcp_server_id, and verifier."""
+        state_data = OAuthStateData(
+            user_id=self.user_id,
+            mcp_server_id=self.mcp_server_id,
+            verifier=verifier,
+        )
+        
+        await self.redis.set(
+            self._state_key(state, self._prefix),
+            state_data.model_dump_json(),
+            ex=600,
+        )
+
+    async def get_verifier(self, state: str) -> str | None:
+        """Get verifier from state data."""
+        raw = await self.redis.get(self._state_key(state, self._prefix))
+        if not raw:
+            return None
+        state_data = OAuthStateData.model_validate_json(raw)
+        return state_data.verifier
+
+    async def delete_verifier(self, state: str) -> None:
+        await self.redis.delete(self._state_key(state, self._prefix))
+
     async def aclose(self) -> None:
         await self.redis.close()
 
@@ -126,5 +149,26 @@ class TokenStorageFactory:
     def __init__(self):
         self.redis = Redis(host="localhost", port=6379, db=0, decode_responses=True)
 
-    def get_storage(self, mcp_server_id: str) -> RedisTokenStorage:
-        return RedisTokenStorage(mcp_server_id)
+    def get_storage(self, user_id: str, mcp_server_id: str) -> RedisTokenStorage:
+        return RedisTokenStorage(user_id, mcp_server_id, redis=self.redis)
+
+    async def get_state_data(self, state: str) -> OAuthStateData | None:
+        """Retrieve OAuth state data by state parameter."""
+        raw = await self.redis.get(RedisTokenStorage._state_key(state))
+        if not raw:
+            return None
+        return OAuthStateData.model_validate_json(raw)
+
+    async def get_storage_from_state(self, state: str) -> tuple[RedisTokenStorage, OAuthStateData] | None:
+        """
+        Recover storage instance from OAuth state parameter.
+        
+        Returns:
+            Tuple of (storage, state_data) or None if state is invalid/expired.
+        """
+        state_data = await self.get_state_data(state)
+        if not state_data:
+            return None
+        
+        storage = self.get_storage(state_data.user_id, state_data.mcp_server_id)
+        return storage, state_data

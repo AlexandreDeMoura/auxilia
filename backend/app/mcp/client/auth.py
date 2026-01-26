@@ -3,8 +3,8 @@ from urllib.parse import urlencode, urljoin
 
 import httpx
 from mcp.client.auth import OAuthClientProvider, OAuthFlowError, PKCEParameters
-from mcp.shared.auth import OAuthClientMetadata
-from pydantic import AnyUrl
+from mcp.shared.auth import OAuthClientMetadata, OAuthClientInformationFull
+from pydantic import AnyUrl, AnyHttpUrl
 
 from app.mcp.client.exceptions import OAuthAuthorizationRequired
 
@@ -13,20 +13,23 @@ import logging
 logger = logging.getLogger(__name__)
 
 def build_oauth_client_metadata(mcp_server: dict) -> OAuthClientMetadata:
+
     return OAuthClientMetadata(
         client_name="auxilia",
         redirect_uris=[
-            AnyUrl(f"http://localhost:8000/mcp-servers/{mcp_server.id}/oauth/callback")
+            AnyUrl("http://localhost:8000/mcp-servers/oauth/callback")
         ],
         grant_types=["authorization_code", "refresh_token"],
         response_types=["code"],
-        scope="user",
+        scope="https://www.googleapis.com/auth/bigquery" if mcp_server.url == "https://bigquery.googleapis.com/mcp" else "user",
     )
 
 
 class ServerlessOAuthProvider(OAuthClientProvider):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, client_id: str | None = None, client_secret: str | None = None, **kwargs):
         super().__init__(*args, **kwargs)
+        self._client_id = client_id
+        self._client_secret = client_secret
 
     async def _initialize(self):
         """Initialize and properly set token expiry from stored tokens."""
@@ -36,9 +39,22 @@ class ServerlessOAuthProvider(OAuthClientProvider):
         if not self.context.oauth_metadata:
             self.context.oauth_metadata = await self.context.storage.get_oauth_metadata()
         
+        if self.context.oauth_metadata and self.context.oauth_metadata.issuer == AnyHttpUrl("https://mcp.hubspot.com/"):
+            
+            print("setting token endpoint to https://mcp.hubspot.com/oauth/v1/token")
+            self.context.oauth_metadata.token_endpoint = AnyHttpUrl("https://mcp.hubspot.com/oauth/v1/token")
+
+        if not self.context.client_info and self.context.client_metadata and self._client_id:
+            self.context.client_info = OAuthClientInformationFull(
+                client_id=self._client_id,
+                client_secret=self._client_secret,
+                **self.context.client_metadata.model_dump()
+            )
+            print(self.context.client_info)
+        
         if self.context.current_tokens:
             self.context.update_token_expiry(self.context.current_tokens)
-            
+        
         self._initialized = True
 
     async def _perform_authorization_code_grant(self) -> tuple[str, str]:
@@ -83,6 +99,10 @@ class ServerlessOAuthProvider(OAuthClientProvider):
             "code_challenge": pkce_params.code_challenge,
             "code_challenge_method": "S256",
         }
+        
+        if self.context.oauth_metadata.issuer == AnyHttpUrl("https://accounts.google.com/"):
+            auth_params["access_type"] = "offline"
+            auth_params["prompt"] = "consent"
 
         # Include resource param if needed (SDK Logic)
         if self.context.should_include_resource_param(self.context.protocol_version):
@@ -93,7 +113,7 @@ class ServerlessOAuthProvider(OAuthClientProvider):
             auth_params["scope"] = self.context.client_metadata.scope
 
         authorization_url = f"{auth_endpoint}?{urlencode(auth_params)}"
-
+        print("authorization_url", authorization_url)
         raise OAuthAuthorizationRequired(authorization_url)
 
     # --- HELPER FOR PHASE 2 ---
@@ -123,11 +143,10 @@ class ServerlessOAuthProvider(OAuthClientProvider):
         token_request = await self._exchange_token_authorization_code(
             auth_code=code, code_verifier=verifier
         )
-
+        
         # Execute the request (since _exchange... returns a Request object)
         async with httpx.AsyncClient() as client:
             response = await client.send(token_request)
-            print(response)
             await self._handle_token_response(response)
 
         await self.context.storage.delete_verifier(state)

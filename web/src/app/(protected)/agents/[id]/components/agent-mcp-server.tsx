@@ -53,7 +53,7 @@ export default function AgentMCPServer({
 				}
 			} else {
 				const response = await api.delete(
-					`/agents/${agent.id}/mcp-servers/${serverId}`
+					`/agents/${agent.id}/mcp-servers/${serverId}`,
 				);
 				console.log("response", response);
 
@@ -73,23 +73,35 @@ export default function AgentMCPServer({
 	const fetchTools = useCallback(async () => {
 		setIsLoading(true);
 		try {
-			const res = await fetch(
-				`http://localhost:8000/mcp-servers/${server.id}/list-tools`
-			);
+			const res = await api.get(`/mcp-servers/${server.id}/list-tools`);
+			const fetchedTools = res.data;
+			console.log("fetchedTools", fetchedTools);
+			setTools(fetchedTools);
+			setToolsFetched(true);
+		} catch (error: unknown) {
+			// Check if this is an OAuth authorization required error
+			if (
+				error &&
+				typeof error === "object" &&
+				"response" in error &&
+				error.response &&
+				typeof error.response === "object" &&
+				"status" in error.response &&
+				error.response.status === 401 &&
+				"data" in error.response &&
+				error.response.data &&
+				typeof error.response.data === "object" &&
+				"auth_url" in error.response.data
+			) {
+				const authUrl = error.response.data.auth_url as string;
+				console.log("OAuth required, opening popup:", authUrl);
 
-			if (res.status === 401) {
-				const data = await res.json();
-				console.log("data", data);
-				const popup = window.open(
-					data.auth_url,
-					"_blank",
-					"width=600,height=700"
-				);
+				const popup = window.open(authUrl, "_blank", "width=600,height=700");
 
 				const pollInterval = setInterval(async () => {
 					try {
 						const statusRes = await api.get(
-							`/mcp-servers/${server.id}/is-connected`
+							`/mcp-servers/${server.id}/is-connected`,
 						);
 						const statusData = statusRes.data;
 
@@ -100,7 +112,7 @@ export default function AgentMCPServer({
 
 							// Retry fetching tools now that we're connected
 							const retryRes = await api.get(
-								`/mcp-servers/${server.id}/list-tools`
+								`/mcp-servers/${server.id}/list-tools`,
 							);
 							const fetchedTools = retryRes.data;
 							setTools(fetchedTools);
@@ -111,8 +123,8 @@ export default function AgentMCPServer({
 								popup.close();
 							}
 						}
-					} catch (error) {
-						console.error("Error polling connection status:", error);
+					} catch (pollError) {
+						console.error("Error polling connection status:", pollError);
 					}
 				}, 2000);
 
@@ -124,10 +136,6 @@ export default function AgentMCPServer({
 				return;
 			}
 
-			const fetchedTools = await res.json();
-			setTools(fetchedTools);
-			setToolsFetched(true);
-		} catch (error) {
 			console.error("Failed to fetch tools:", error);
 			setTools([]);
 		} finally {

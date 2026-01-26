@@ -1,5 +1,3 @@
-import httpx
-
 from contextlib import asynccontextmanager
 from uuid import UUID
 
@@ -7,21 +5,22 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
+from mcp.shared.auth import OAuthClientInformationFull
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
+from app.auth.dependencies import get_current_user
 from app.database import get_db
 from app.mcp.client.auth import ServerlessOAuthProvider, build_oauth_client_metadata
-from app.mcp.client.storage import (
-    RedisTokenStorage,
-    TokenStorageFactory,
-)
+from app.mcp.client.storage import TokenStorageFactory
+from app.users.models import UserDB
 from app.mcp.servers.encryption import encrypt_api_key, decrypt_api_key
 from app.mcp.servers.models import (
     MCPAuthType,
     MCPServerAPIKeyDB,
     MCPServerCreate,
     MCPServerDB,
+    MCPServerOAuthCredentialsDB,
     MCPServerRead,
     MCPServerUpdate,
     OfficialMCPServerDB,
@@ -63,6 +62,26 @@ async def get_mcp_server_api_key(
     return None
 
 
+async def get_mcp_server_oauth_credentials(
+    mcp_server_id: UUID, db: AsyncSession
+) -> MCPServerOAuthCredentialsDB | None:
+    """Get OAuth credentials for an MCP server.
+
+    Args:
+        mcp_server_id: The MCP server ID
+        db: Database session
+
+    Returns:
+        The OAuth credentials record or None if not found
+    """
+    result = await db.execute(
+        select(MCPServerOAuthCredentialsDB).where(
+            MCPServerOAuthCredentialsDB.mcp_server_id == mcp_server_id
+        )
+    )
+    return result.scalar_one_or_none()
+
+
 @router.post("/", response_model=MCPServerRead, status_code=201)
 async def create_mcp_server(
     server: MCPServerCreate, db: AsyncSession = Depends(get_db)
@@ -84,6 +103,18 @@ async def create_mcp_server(
             status_code=400,
             detail="API key is required when auth_type is 'api_key'"
         )
+
+    # Store OAuth credentials for pre-registered OAuth clients
+    if server.auth_type == MCPAuthType.oauth2 and server.oauth_client_id and server.oauth_client_secret:
+        encrypted_secret = encrypt_api_key(server.oauth_client_secret)
+        oauth_credentials = MCPServerOAuthCredentialsDB(
+            mcp_server_id=db_server.id,
+            client_id=server.oauth_client_id,
+            client_secret_encrypted=encrypted_secret,
+            token_endpoint_auth_method=server.oauth_token_endpoint_auth_method,
+            created_by=None,  # TODO: Add user context when authentication is implemented
+        )
+        db.add(oauth_credentials)
 
     await db.commit()
     await db.refresh(db_server)
@@ -160,14 +191,43 @@ async def delete_mcp_server(
     await db.commit()
 
 
-@router.get("/{mcp_server_id}/oauth/callback")
+@router.get("/oauth/callback")
 async def oauth_callback(
     code: str = Query(..., description="Authorization code from OAuth provider"),
-    state: str | None = Query(None, description="State parameter from OAuth provider"),
-    mcp_server: MCPServerDB = Depends(get_mcp_server_dependency),
+    state: str = Query(..., description="State parameter from OAuth provider"),
+    db: AsyncSession = Depends(get_db),
 ):
+    # Recover user_id and mcp_server_id from state
+    storage_factory = TokenStorageFactory()
+    result = await storage_factory.get_storage_from_state(state)
+    
+    if not result:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid or expired OAuth state"
+        )
+    
+    storage, state_data = result
+    
+    # Load MCP server from database
+    db_result = await db.execute(
+        select(MCPServerDB).where(MCPServerDB.id == state_data.mcp_server_id)
+    )
+    mcp_server = db_result.scalar_one_or_none()
+    
+    if not mcp_server:
+        raise HTTPException(status_code=404, detail="MCP server not found")
+    
     client_metadata = build_oauth_client_metadata(mcp_server)
-    storage = TokenStorageFactory().get_storage(mcp_server.id)
+
+    # Load stored OAuth credentials to set token_endpoint_auth_method
+    oauth_credentials = await get_mcp_server_oauth_credentials(mcp_server.id, db)
+    if oauth_credentials:
+        # Default to client_secret_post when pre-registered credentials exist
+        client_metadata.token_endpoint_auth_method = (
+            oauth_credentials.token_endpoint_auth_method or "client_secret_post"
+        )
+
     provider = ServerlessOAuthProvider(
         server_url=mcp_server.url,
         client_metadata=client_metadata,
@@ -186,7 +246,7 @@ async def oauth_callback(
 
 
 @asynccontextmanager
-async def connect_to_server(mcp_server: MCPServerDB, storage: RedisTokenStorage, db: AsyncSession):
+async def connect_to_server(mcp_server: MCPServerDB, user_id: str, db: AsyncSession):
     """Connect to an MCP server and initialize session.
 
     Similar to the pattern from https://modelcontextprotocol.info/docs/tutorials/building-a-client/
@@ -194,7 +254,8 @@ async def connect_to_server(mcp_server: MCPServerDB, storage: RedisTokenStorage,
 
     Args:
         mcp_server: MCP server configuration
-        storage: Storage instance for OAuth tokens
+        user_id: The current user's ID
+        db: Database session
 
     Yields:
         tuple: (session, tools) - Initialized session and available tools
@@ -202,44 +263,84 @@ async def connect_to_server(mcp_server: MCPServerDB, storage: RedisTokenStorage,
     Raises:
         OAuthAuthorizationRequired: If OAuth authorization is needed
     """
+    storage = TokenStorageFactory().get_storage(user_id, str(mcp_server.id))
+    
     if mcp_server.auth_type == MCPAuthType.oauth2:
         client_metadata = build_oauth_client_metadata(mcp_server)
+
+        # Check for pre-registered OAuth credentials
+        oauth_credentials = await get_mcp_server_oauth_credentials(mcp_server.id, db)
+
+        if oauth_credentials:
+            # Use pre-registered OAuth credentials
+            client_id = oauth_credentials.client_id
+            client_secret = decrypt_api_key(oauth_credentials.client_secret_encrypted)
+
+            # Default to client_secret_post when pre-registered credentials exist
+            client_metadata.token_endpoint_auth_method = (
+                oauth_credentials.token_endpoint_auth_method or "client_secret_post"
+            )
+
+            await storage.set_client_info(
+                OAuthClientInformationFull(
+                    client_id=client_id,
+                    client_secret=client_secret,
+                    **client_metadata.model_dump(),
+                )
+            )
+        else:
+            # Fall back to DCR (Dynamic Client Registration)
+            client_id = None
+            client_secret = None
+
         provider = ServerlessOAuthProvider(
             server_url=mcp_server.url,
             client_metadata=client_metadata,
             storage=storage,
+            client_id=client_id,
+            client_secret=client_secret,
         )
-        client_args={"url": mcp_server.url, "auth": provider}
+
+        client_args = {"url": mcp_server.url, "auth": provider}
     elif mcp_server.auth_type == MCPAuthType.api_key:
         api_key = await get_mcp_server_api_key(mcp_server.id, db)
-        client_args={"url": mcp_server.url, "headers": {"Authorization": f"Bearer {api_key}"}}
+        client_args = {"url": mcp_server.url, "headers": {"Authorization": f"Bearer {api_key}"}}
     else:
-        client_args={"url": mcp_server.url}
+        client_args = {"url": mcp_server.url}
 
     async with streamablehttp_client(**client_args) as (read, write, _):
         async with ClientSession(read, write) as session:
             await session.initialize()
 
             response = await session.list_tools()
-            tools = response.tools
+            tools = response.tools    
+
+            if "bigquery" in mcp_server.url:                
+                await session.call_tool("list_dataset_ids", {"project_id": "choose-data-dev"})            
 
             yield session, tools
 
 
 @router.get("/{mcp_server_id}/list-tools")
-async def list_tools(mcp_server: MCPServerDB = Depends(get_mcp_server_dependency), db: AsyncSession = Depends(get_db)):
+async def list_tools(
+    mcp_server: MCPServerDB = Depends(get_mcp_server_dependency),
+    current_user: UserDB = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     """List available tools from an MCP server.
 
     Connects to the server, retrieves available tools, and returns them.
     OAuth errors are handled by the global exception handler.
     """
-    storage = TokenStorageFactory().get_storage(mcp_server.id)
-    async with connect_to_server(mcp_server, storage, db) as (_, tools):
+    async with connect_to_server(mcp_server, str(current_user.id), db) as (_, tools):
         return [{"name": tool.name, "description": tool.description} for tool in tools]
 
 
 @router.get("/{mcp_server_id}/is-connected")
-async def is_connected(mcp_server: MCPServerDB = Depends(get_mcp_server_dependency)):
+async def is_connected(
+    mcp_server: MCPServerDB = Depends(get_mcp_server_dependency),
+    current_user: UserDB = Depends(get_current_user),
+):
     """Check if an MCP server is connected.
 
     Returns True if:
@@ -252,15 +353,15 @@ async def is_connected(mcp_server: MCPServerDB = Depends(get_mcp_server_dependen
     if mcp_server.auth_type in [MCPAuthType.none, MCPAuthType.api_key]:
         return {"connected": True}
 
-    storage = TokenStorageFactory().get_storage(mcp_server.id)
+    storage = TokenStorageFactory().get_storage(str(current_user.id), str(mcp_server.id))
     client_metadata = build_oauth_client_metadata(mcp_server)
+
     provider = ServerlessOAuthProvider(
         server_url=mcp_server.url,
         client_metadata=client_metadata,
-        storage=storage,
+        storage=storage
     )
 
-    
     await provider._initialize()
     tokens = await provider.context.storage.get_tokens()
     

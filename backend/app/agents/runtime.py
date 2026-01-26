@@ -10,6 +10,7 @@ from langgraph.types import Command
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from langchain_core.messages import SystemMessage
 from langchain.agents.middleware import HumanInTheLoopMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
@@ -42,6 +43,7 @@ class Model(BaseModel):
 
 LLM_PROVIDERS = []
 MODELS = []
+print(MODELS)
 
 if model_provider_settings.openai_api_key:
     LLM_PROVIDERS.append(ModelProvider(name="openai", api_key=model_provider_settings.openai_api_key))
@@ -105,7 +107,7 @@ class AgentRuntime:
 
     async def build_mcp_server_config(self, mcp_server_config: dict) -> dict:
         client_metadata = build_oauth_client_metadata(mcp_server_config)
-        storage = TokenStorageFactory().get_storage(mcp_server_config.id)
+        storage = TokenStorageFactory().get_storage(self.thread.user_id, mcp_server_config.id)
 
         config = {
             "url": mcp_server_config.url,
@@ -186,6 +188,7 @@ class AgentRuntime:
 
     async def initialize(self):
         self.config = await read_agent(self.thread.agent_id, self.db)
+        
         result = await self.db.execute(
             select(MCPServerDB).where(
                 MCPServerDB.id.in_(
@@ -210,13 +213,17 @@ class AgentRuntime:
             messages: List of messages to process
             message_id: Optional message ID from frontend (used when resuming after HITL approval)
         """
-        async with AsyncPostgresSaver.from_conn_string(app_settings.database_url) as checkpointer:
+        # AsyncPostgresSaver expects a native psycopg3 connection string (postgresql://)
+        # not the SQLAlchemy dialect URL (postgresql+psycopg://)
+        conn_string = app_settings.database_url.replace("postgresql+psycopg://", "postgresql://")
+        async with AsyncPostgresSaver.from_conn_string(conn_string) as checkpointer:
             model_provider = await self.get_model_provider(self.thread.model_id)
             chat_model = self._deps.model_factory.create(model_provider.name, self.thread.model_id, model_provider.api_key)
             
             agent = create_agent(
                 model=chat_model,
                 tools=self.tools,
+                system_prompt=SystemMessage(content=self.config.instructions),
                 checkpointer=checkpointer,
                     middleware=[
                     HumanInTheLoopMiddleware( 
@@ -249,13 +256,18 @@ class AgentRuntime:
                 langchain_stream = agent.astream_events(
                     Command(resume={"decisions": [{"type": command} for command in commands]}),
                     version="v2",
-                    config={"configurable": {"thread_id": self.thread.id}},
+                    config={
+                        "configurable": {"thread_id": self.thread.id},
+                        "recursion_limit": 50
+                    },
                 )
             else:
                 langchain_stream = agent.astream_events(
                     {"messages": langchain_messages},
                     version="v2",
-                    config={"configurable": {"thread_id": self.thread.id}},
+                    config={
+                        "configurable": {"thread_id": self.thread.id}, "recursion_limit": 50
+                    },
                 )
 
             ai_sdk_stream_adapter = AISDKStreamAdapter(

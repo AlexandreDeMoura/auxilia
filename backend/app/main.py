@@ -28,23 +28,36 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
+@app.exception_handler(OAuthAuthorizationRequired)
 @app.exception_handler(ExceptionGroup)
-async def oauth_exception_handler(request: Request, exc_group: ExceptionGroup):
+async def oauth_exception_handler(request: Request, exc: Exception):
     """Global exception handler for OAuth authorization requirements.
-
-    Catches exception groups containing OAuthAuthorizationRequired and returns
-    a 401 response with the authorization URL.
+    
+    Handles both direct OAuthAuthorizationRequired exceptions and those 
+    wrapped inside ExceptionGroups (e.g., from TaskGroups).
     """
-    # Check if the exception group contains OAuthAuthorizationRequired
-    for exc in exc_group.exceptions:
-        if isinstance(exc, OAuthAuthorizationRequired):
+
+    # 1. Check if the exception was raised directly
+    if isinstance(exc, OAuthAuthorizationRequired):
+        return JSONResponse(
+            status_code=401,
+            content={"error": "oauth_required", "auth_url": exc.url},
+        )
+
+    # 2. Check if it's an ExceptionGroup containing our target exception
+    if isinstance(exc, ExceptionGroup):
+        # .subgroup() searches the group (recursively) for matches
+        if matching_group := exc.subgroup(OAuthAuthorizationRequired):
+            # Extract the first match to get the URL
+            first_match = matching_group.exceptions[0]
             return JSONResponse(
                 status_code=401,
-                content={"error": "oauth_required", "auth_url": exc.url},
+                content={"error": "oauth_required", "auth_url": first_match.url},
             )
 
-    # If it's not an OAuth error, re-raise the exception group
-    raise exc_group
+    # 3. If it's an ExceptionGroup that doesn't contain our error, 
+    # or an unrelated exception caught by accident, re-raise it.
+    raise exc
 
 
 app.add_middleware(

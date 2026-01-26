@@ -14,8 +14,12 @@ from app.users.models import UserDB
 from app.auth.dependencies import get_current_user
 from app.threads.models import ThreadCreate, ThreadDB, ThreadRead
 from app.agents.runtime import AgentRuntimeDependencies, ChatModelFactory
+from app.settings import app_settings
 
-DB_URI = "postgresql://auxilia:auxilia@localhost:5432/auxilia"
+
+def get_psycopg_conn_string() -> str:
+    """Convert SQLAlchemy URL to psycopg3-compatible connection string."""
+    return app_settings.database_url.replace("postgresql+psycopg://", "postgresql://")
 
 router = APIRouter(prefix="/threads", tags=["threads"])
 
@@ -30,7 +34,7 @@ async def read_thread(thread_id: str, db: AsyncSession = Depends(get_db)) -> dic
     if not thread:
         raise HTTPException(status_code=404, detail="Thread not found")
 
-    async with AsyncPostgresSaver.from_conn_string(DB_URI) as checkpointer:
+    async with AsyncPostgresSaver.from_conn_string(get_psycopg_conn_string()) as checkpointer:
         checkpoint = await checkpointer.aget(
             config={"configurable": {"thread_id": thread_id}}
         )
@@ -67,7 +71,7 @@ async def create_thread(
 @router.delete("/{thread_id}", status_code=204)
 async def delete_thread(thread_id: str, db: AsyncSession = Depends(get_db)) -> None:
 
-    async with AsyncPostgresSaver.from_conn_string(DB_URI) as checkpointer:
+    async with AsyncPostgresSaver.from_conn_string(get_psycopg_conn_string()) as checkpointer:
         await checkpointer.adelete_thread(thread_id=thread_id)
     
     result = await db.execute(
@@ -100,7 +104,6 @@ async def invoke(
         model_factory=ChatModelFactory(),
     )
     agent_runtime = await AgentRuntime.create(thread=thread, db=db, deps=deps)
-    
 
     return StreamingResponse(
         agent_runtime.stream(messages, message_id=messageId),
