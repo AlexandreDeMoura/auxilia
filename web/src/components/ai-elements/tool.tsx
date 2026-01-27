@@ -16,20 +16,33 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import type { ComponentProps, ReactNode } from "react";
-import { isValidElement } from "react";
+import { isValidElement, useState } from "react";
 import { CodeBlock } from "./code-block";
 
-export type ToolProps = ComponentProps<typeof Collapsible>;
+export type ToolProps = ComponentProps<typeof Collapsible> & {
+	toolState?: ToolUIPart["state"];
+};
 
-export const Tool = ({ className, ...props }: ToolProps) => (
-	<Collapsible
-		className={cn(
-			"not-prose group w-full min-w-0 overflow-hidden rounded-xl bg-muted/50 transition-colors hover:bg-muted/70",
-			className
-		)}
-		{...props}
-	/>
-);
+export const Tool = ({ className, toolState, ...props }: ToolProps) => {
+	const [userOpenPreference, setUserOpenPreference] = useState<boolean | null>(
+		null,
+	);
+
+	const isOpen =
+		toolState === "approval-requested" ? true : (userOpenPreference ?? false);
+
+	return (
+		<Collapsible
+			open={isOpen}
+			onOpenChange={(open) => setUserOpenPreference(open)}
+			className={cn(
+				"not-prose group w-full min-w-0 overflow-hidden rounded-xl bg-muted/50 transition-colors hover:bg-muted/70",
+				className,
+			)}
+			{...props}
+		/>
+	);
+};
 
 export type ToolHeaderProps = {
 	title?: string;
@@ -43,7 +56,7 @@ export type ToolHeaderProps = {
 
 const getStatusIcon = (
 	status: ToolUIPart["state"],
-	approval?: ToolUIPart["approval"]
+	approval?: ToolUIPart["approval"],
 ): ReactNode => {
 	switch (status) {
 		case "input-streaming":
@@ -107,7 +120,7 @@ export const ToolHeader = ({
 		<CollapsibleTrigger
 			className={cn(
 				"flex w-full items-center justify-between gap-4 px-4 py-3 cursor-pointer",
-				className
+				className,
 			)}
 			{...props}
 		>
@@ -144,7 +157,7 @@ export const ToolContent = ({ className, ...props }: ToolContentProps) => (
 	<CollapsibleContent
 		className={cn(
 			"w-full max-w-full min-w-0 overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down",
-			className
+			className,
 		)}
 		{...props}
 	/>
@@ -159,7 +172,7 @@ export const ToolContentInner = ({
 	<div
 		className={cn(
 			"mx-3 mb-3 min-w-0 space-y-3 rounded-lg bg-background/50 border border-border/30 overflow-hidden",
-			className
+			className,
 		)}
 		{...props}
 	/>
@@ -171,7 +184,7 @@ export const ToolFooter = ({ className, ...props }: ToolFooterProps) => (
 	<div
 		className={cn(
 			"flex items-center justify-end gap-2 px-3 pb-3 pt-2",
-			className
+			className,
 		)}
 		{...props}
 	/>
@@ -229,7 +242,7 @@ export const ToolOutput = ({
 		<div
 			className={cn(
 				"min-w-0 space-y-2 overflow-hidden p-3 border-t border-border/30",
-				className
+				className,
 			)}
 			{...props}
 		>
@@ -241,7 +254,7 @@ export const ToolOutput = ({
 					"min-w-0 overflow-x-auto rounded-md text-xs [&_table]:w-full max-h-80 overflow-y-auto",
 					errorText
 						? "bg-destructive/10 text-destructive p-3"
-						: "bg-muted/60 text-foreground"
+						: "bg-muted/60 text-foreground",
 				)}
 			>
 				{errorText ? <span>{errorText}</span> : Output}

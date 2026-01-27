@@ -110,7 +110,12 @@ export default function AgentMCPServer({
 							setIsConnected(true);
 							setIsAttached(true);
 
-							// Retry fetching tools now that we're connected
+							// Sync tools to the binding (saves with always_allow)
+							await api.post(
+								`/agents/${agent.id}/mcp-servers/${server.id}/sync-tools`,
+							);
+
+							// Fetch tools for display
 							const retryRes = await api.get(
 								`/mcp-servers/${server.id}/list-tools`,
 							);
@@ -118,6 +123,9 @@ export default function AgentMCPServer({
 							setTools(fetchedTools);
 							setToolsFetched(true);
 							setIsLoading(false);
+
+							// Notify parent to refresh agent data with updated tools
+							onUpdate?.();
 
 							if (popup && !popup.closed) {
 								popup.close();
@@ -141,7 +149,7 @@ export default function AgentMCPServer({
 		} finally {
 			setIsLoading(false);
 		}
-	}, [server.id]);
+	}, [server.id, agent.id, onUpdate]);
 
 	const handleConnect = async () => {
 		await fetchTools();

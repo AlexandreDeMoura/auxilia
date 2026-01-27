@@ -268,15 +268,15 @@ async def connect_to_server(mcp_server: MCPServerDB, user_id: str, db: AsyncSess
     if mcp_server.auth_type == MCPAuthType.oauth2:
         client_metadata = build_oauth_client_metadata(mcp_server)
 
-        # Check for pre-registered OAuth credentials
+        # Check for statically registered OAuth credentials
         oauth_credentials = await get_mcp_server_oauth_credentials(mcp_server.id, db)
 
         if oauth_credentials:
-            # Use pre-registered OAuth credentials
+            # Use statically registered OAuth credentials
             client_id = oauth_credentials.client_id
             client_secret = decrypt_api_key(oauth_credentials.client_secret_encrypted)
 
-            # Default to client_secret_post when pre-registered credentials exist
+            # Default to client_secret_post when statically registered credentials exist
             client_metadata.token_endpoint_auth_method = (
                 oauth_credentials.token_endpoint_auth_method or "client_secret_post"
             )

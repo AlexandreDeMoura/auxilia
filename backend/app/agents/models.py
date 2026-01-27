@@ -2,13 +2,19 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
 from sqlmodel import ARRAY, Column, DateTime, Field, SQLModel, String, Text
+
+
+# Tool status type for the tools JSON column
+ToolStatus = str  # "always_allow" | "needs_approval" | "disabled"
 
 
 class AgentMCPServer(BaseModel):
     id: UUID
     enabled_tools: list[str] | None = None
+    tools: dict[str, ToolStatus] | None = None
 
 
 class AgentConfig(BaseModel):
@@ -24,6 +30,9 @@ class AgentMCPServerBindingBase(SQLModel):
     mcp_server_id: UUID = Field(foreign_key="mcp_servers.id", nullable=False)
     enabled_tools: list[str] | None = Field(
         default=None, sa_column=Column(ARRAY(String), nullable=True)
+    )
+    tools: dict[str, ToolStatus] | None = Field(
+        default=None, sa_column=Column(JSONB, nullable=True)
     )
 
 
@@ -50,10 +59,12 @@ class AgentMCPServerBindingDB(AgentMCPServerBindingBase, table=True):
 
 class AgentMCPServerBindingCreate(SQLModel):
     enabled_tools: list[str] | None = None
+    tools: dict[str, ToolStatus] | None = None
 
 
 class AgentMCPServerBindingUpdate(SQLModel):
     enabled_tools: list[str] | None = None
+    tools: dict[str, ToolStatus] | None = None
 
 
 class AgentMCPServerBindingRead(AgentMCPServerBindingBase):

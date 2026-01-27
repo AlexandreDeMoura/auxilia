@@ -28,7 +28,11 @@ async def read_agent(agent_id: UUID, db: AsyncSession) -> AgentRead:
     agent = rows[0][0]
 
     mcp_servers = [
-        AgentMCPServer(id=binding.mcp_server_id, enabled_tools=binding.enabled_tools)
+        AgentMCPServer(
+            id=binding.mcp_server_id,
+            enabled_tools=binding.enabled_tools,
+            tools=binding.tools,
+        )
         for _, binding in rows
         if binding is not None
     ]

@@ -1,8 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Agent } from "@/types/agents";
+import { Agent, ToolStatus } from "@/types/agents";
 import { api } from "@/lib/api/client";
+import {
+	ThreeStateToggle,
+	ToggleState,
+} from "@/components/ui/three-state-toggle";
 
 interface AgentMCPToolProps {
 	agent: Agent;
@@ -22,24 +26,42 @@ export default function AgentMCPTool({
 	onUpdate,
 }: AgentMCPToolProps) {
 	const agentServer = agent.mcpServers?.find((s) => s.id === serverId);
-	const initialEnabled =
-		agentServer?.enabledTools?.includes(toolName) ||
-		agentServer?.enabledTools?.includes("*") ||
-		false;
 
-	const [isToolEnabled, setIsToolEnabled] = useState(initialEnabled);
+	// Get the initial tool status from the tools column
+	const getInitialStatus = (): ToolStatus => {
+		// First, check the new tools column
+		if (agentServer?.tools && toolName in agentServer.tools) {
+			return agentServer.tools[toolName];
+		}
+		// Fall back to the old enabledTools array for backwards compatibility
+		const isEnabled =
+			agentServer?.enabledTools?.includes(toolName) ||
+			agentServer?.enabledTools?.includes("*") ||
+			false;
+		return isEnabled ? "always_allow" : "disabled";
+	};
 
-	const handleToggleTool = async (isEnabled: boolean) => {
-		setIsToolEnabled(isEnabled);
+	const [toolStatus, setToolStatus] = useState<ToolStatus>(getInitialStatus);
+
+	const handleStatusChange = async (newStatus: ToggleState) => {
+		const previousStatus = toolStatus;
+		setToolStatus(newStatus);
 
 		try {
+			// Update the tools column with the new status
+			const toolsUpdate: Record<string, ToolStatus> = {
+				[toolName]: newStatus,
+			};
+
+			// Also update the legacy enabled_tools array for backwards compatibility
 			const currentEnabledTools = agentServer?.enabledTools || [];
 			const hasWildcard = currentEnabledTools.includes("*");
+			const isEnabled = newStatus !== "disabled";
 
 			let updatedTools: string[];
 
 			if (isEnabled) {
-				// ENABLING A TOOL
+				// ENABLING A TOOL (always_allow or needs_approval)
 				if (hasWildcard) {
 					updatedTools = ["*"];
 				} else {
@@ -69,40 +91,34 @@ export default function AgentMCPTool({
 
 			await api.patch(`/agents/${agent.id}/mcp-servers/${serverId}`, {
 				enabled_tools: updatedTools,
+				tools: toolsUpdate,
 			});
 
 			// Notify parent to refresh/update
 			onUpdate?.();
 		} catch (error) {
-			console.error("Failed to toggle tool:", error);
-			setIsToolEnabled(!isEnabled);
+			console.error("Failed to update tool status:", error);
+			setToolStatus(previousStatus);
 		}
 	};
 
 	return (
-		<div className="flex p-3 bg-gray-50 rounded hover:bg-gray-100">
-			<div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center text-gray-600 text-xs font-semibold mr-3">
+		<div className="flex items-center p-3 bg-gray-50 rounded hover:bg-gray-100">
+			<div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center text-gray-600 text-xs font-semibold mr-3 shrink-0">
 				{toolName.charAt(0).toUpperCase()}
 			</div>
 
-			<div className="flex-1">
-				<div className="text-sm font-medium">{toolName}</div>
+			<div className="flex-1 min-w-0 mr-3">
+				<div className="text-sm font-medium truncate">{toolName}</div>
 				{toolDescription && (
 					<div className="text-xs text-gray-500 line-clamp-2">
 						{toolDescription}
 					</div>
 				)}
 			</div>
-			<div className="flex items-center">
-				<label className="relative inline-flex items-center cursor-pointer">
-					<input
-						type="checkbox"
-						className="sr-only peer"
-						checked={isToolEnabled}
-						onChange={(e) => handleToggleTool(e.target.checked)}
-					/>
-					<div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-black"></div>
-				</label>
+
+			<div className="flex items-center shrink-0">
+				<ThreeStateToggle value={toolStatus} onChange={handleStatusChange} />
 			</div>
 		</div>
 	);

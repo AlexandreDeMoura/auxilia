@@ -158,21 +158,21 @@ class AgentRuntime:
 
         async def fetch_and_filter_tools(server_id: str):
             tools = await client.get_tools(server_name=server_id)
-            enabled_tools = enabled_tools_map.get(str(server_id))
-
-            if enabled_tools is None or enabled_tools == ["*"]:
-                return tools
-            else:
-                filtered = [tool for tool in tools if tool.name in enabled_tools]
-                return filtered
+            enabled_tools = enabled_tools_map.get(str(server_id))        
+            always_allowed_tools = [tool for tool in tools if tool.name in [server_id + "_" + tool for tool, status in enabled_tools.items() if status == "always_allow"]]
+            need_approval_tools = [tool for tool in tools if tool.name in [server_id + "_" + tool for tool, status in enabled_tools.items() if status == "needs_approval"]]
+            return always_allowed_tools, need_approval_tools
 
         tasks = [
             fetch_and_filter_tools(server_id)
             for server_id in multi_mcp_server_configs.keys()
         ]
         results = await asyncio.gather(*tasks)
-        tools = [tool for result in results for tool in result]
-        return tools
+        
+        always_allowed_tools = [tool for result in results for tool in result[0]]
+        need_approval_tools = [tool for result in results for tool in result[1]]
+
+        return always_allowed_tools, need_approval_tools
 
     async def get_model_provider(self, model_name: str = "gpt-4o-mini") -> ModelProvider:
         model = next(model for model in MODELS if model.name == model_name)
@@ -198,13 +198,16 @@ class AgentRuntime:
         )
         mcp_servers = result.scalars().all()
         mcp_servers = list(mcp_servers)
+        
         mcp_server_configs = await self.build_multi_mcp_server_configs(mcp_servers)
-        enabled_tools_map = {
-            str(mcp_server.id): mcp_server.enabled_tools
+        
+        tool_settings = {
+            next(server.name for server in mcp_servers if server.id == mcp_server.id): mcp_server.tools
             for mcp_server in self.config.mcp_servers
         }
 
-        self.tools = await self.get_tools(mcp_server_configs, enabled_tools_map)
+        self.tools = await self.get_tools(mcp_server_configs, tool_settings)
+        
 
     async def stream(self, messages: list[Message], message_id: str | None = None):
         """Wrapper to keep checkpointer alive during streaming.
@@ -220,15 +223,19 @@ class AgentRuntime:
             model_provider = await self.get_model_provider(self.thread.model_id)
             chat_model = self._deps.model_factory.create(model_provider.name, self.thread.model_id, model_provider.api_key)
             
+            tools = self.tools[0] + self.tools[1]
+            need_approval_tools = self.tools[1]
+            
+            
             agent = create_agent(
                 model=chat_model,
-                tools=self.tools,
+                tools=tools,
                 system_prompt=SystemMessage(content=self.config.instructions),
                 checkpointer=checkpointer,
                     middleware=[
                     HumanInTheLoopMiddleware( 
                         interrupt_on={
-                            "Notion_notion-search": True,
+                            tool.name: True for tool in need_approval_tools
                         },
                         description_prefix="Tool execution pending approval",
                     )

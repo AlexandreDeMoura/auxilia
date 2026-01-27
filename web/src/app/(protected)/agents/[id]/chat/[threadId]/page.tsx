@@ -193,7 +193,10 @@ const ChatPage = () => {
 													.join("_");
 
 												return (
-													<Tool key={`${message.id}-${i}`} defaultOpen={false}>
+													<Tool
+														key={`${message.id}-${i}`}
+														toolState={toolPart.state}
+													>
 														<ToolHeader
 															title={toolName}
 															type={toolPart.type}
@@ -202,7 +205,7 @@ const ChatPage = () => {
 															mcpServerName={serverName}
 															mcpServerIcon={
 																mcpServers.find(
-																	(server) => server.name === serverName
+																	(server) => server.name === serverName,
 																)?.iconUrl
 															}
 														/>
