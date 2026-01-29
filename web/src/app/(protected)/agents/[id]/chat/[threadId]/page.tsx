@@ -43,7 +43,7 @@ import {
 	lastAssistantMessageIsCompleteWithApprovalResponses,
 } from "ai";
 import { useParams } from "next/navigation";
-import { api } from "@/lib/api/client";
+import { api, API_BASE_URL } from "@/lib/api/client";
 import { Loader } from "../components/loader";
 import { useMcpServersStore } from "@/stores/mcp-servers-store";
 
@@ -65,7 +65,7 @@ const ChatPage = () => {
 		addToolApprovalResponse,
 	} = useChat({
 		transport: new DefaultChatTransport({
-			api: `http://localhost:8000/threads/${threadId}/invoke`,
+			api: `${API_BASE_URL}/threads/${threadId}/invoke`,
 			prepareSendMessagesRequest: ({ messages, trigger, messageId }) => {
 				const message = messages[messages.length - 1];
 				return {

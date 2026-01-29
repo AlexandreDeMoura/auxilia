@@ -1,8 +1,25 @@
 import axios from "axios";
 import snakecaseKeys from "snakecase-keys";
 
+// Determine if we're running on the server or client
+const isServer = typeof window === "undefined";
+
+// API base URL:
+// - Server-side: call backend directly (no proxy needed, avoids localhost resolution issues)
+// - Client-side: use Next.js proxy path (hides backend URL from browser)
+const getApiBaseUrl = () => {
+	if (isServer) {
+		// Server Components call the backend directly
+		return process.env.BACKEND_URL || "http://localhost:8000";
+	}
+	// Client-side uses the Next.js proxy
+	return "/api/backend";
+};
+
+export const API_BASE_URL = getApiBaseUrl();
+
 export const api = axios.create({
-	baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000",
+	baseURL: API_BASE_URL,
 	withCredentials: true,
 });
 

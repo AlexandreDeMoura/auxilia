@@ -46,7 +46,7 @@ export const Tool = ({ className, toolState, ...props }: ToolProps) => {
 
 export type ToolHeaderProps = {
 	title?: string;
-	mcpServerName?: string;
+	mcpServerName: string;
 	mcpServerIcon?: string;
 	type: ToolUIPart["type"];
 	state: ToolUIPart["state"];
@@ -60,8 +60,9 @@ const getStatusIcon = (
 ): ReactNode => {
 	switch (status) {
 		case "input-streaming":
-		case "call":
-			return <CircleDashedIcon className="size-4 text-muted-foreground" />;
+		// TO BE REFACTORED: corresponds to when tool_output is None
+		// case "call":
+		// 	return <CircleDashedIcon className="size-4 text-muted-foreground" />;
 		case "input-available":
 			return (
 				<LoaderIcon className="size-4 text-muted-foreground animate-spin" />

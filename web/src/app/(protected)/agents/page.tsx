@@ -7,21 +7,24 @@ import AgentList from "@/app/(protected)/agents/components/agent-list";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api/client";
 import { useAgentsStore } from "@/stores/agents-store";
+import { useUserStore } from "@/stores/user-store";
 import { Agent } from "@/types/agents";
 
 export default function AgentsPage() {
 	const router = useRouter();
+	const user = useUserStore((state) => state.user);
 	const addAgent = useAgentsStore((state) => state.addAgent);
 	const [isCreating, setIsCreating] = useState(false);
 
 	const handleCreateAgent = async () => {
+		if (!user) return;
 		setIsCreating(true);
 		try {
 			const response = await api.post("/agents", {
 				name: "New Agent",
 				instructions: "",
 				emoji: "🤖",
-				owner_id: "b4937c31-71ac-45e1-b00a-e633191fa1c4",
+				owner_id: user.id,
 			});
 			const newAgent: Agent = response.data;
 			addAgent(newAgent);

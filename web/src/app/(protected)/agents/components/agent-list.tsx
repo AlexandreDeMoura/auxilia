@@ -3,16 +3,16 @@
 import { useState, useEffect } from "react";
 import { Agent } from "@/types/agents";
 import AgentCard from "@/app/(protected)/agents/components/agent-card";
+import { api } from "@/lib/api/client";
 
 export default function AgentList() {
 	const [agents, setAgents] = useState<Agent[]>([]);
 
 	useEffect(() => {
-		fetch("http://localhost:8000/agents")
-			.then((response) => response.json())
-			.then((data) => {
-				setAgents(data);
-			});
+		api
+			.get<Agent[]>("/agents")
+			.then((response) => setAgents(response.data))
+			.catch(console.error);
 	}, []);
 	return (
 		<div className="w-full mx-auto">

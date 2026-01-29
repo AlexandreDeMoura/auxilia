@@ -30,7 +30,7 @@ export default function AgentEditor({ agent }: AgentEditorProps) {
 	const [emoji, setEmoji] = useState(agent.emoji || "🤖");
 	const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 	const emojiPickerRef = useRef<HTMLDivElement>(null);
-	const instructionsTimeoutRef = useRef<NodeJS.Timeout>();
+	const instructionsTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
 	useEffect(() => {
 		const handleClickOutside = (event: MouseEvent) => {
@@ -58,7 +58,7 @@ export default function AgentEditor({ agent }: AgentEditorProps) {
 
 	const saveAgent = useCallback(
 		async (
-			updates: Partial<Pick<Agent, "name" | "instructions" | "emoji">>
+			updates: Partial<Pick<Agent, "name" | "instructions" | "emoji">>,
 		) => {
 			try {
 				const response = await api.patch(`/agents/${agent.id}`, updates);
@@ -68,13 +68,13 @@ export default function AgentEditor({ agent }: AgentEditorProps) {
 				console.error("Error saving agent:", error);
 			}
 		},
-		[agent.id, updateAgent]
+		[agent.id, updateAgent],
 	);
 
 	const handleDeleteAgent = async () => {
 		if (
 			!confirm(
-				"Are you sure you want to delete this agent? This action cannot be undone."
+				"Are you sure you want to delete this agent? This action cannot be undone.",
 			)
 		) {
 			return;
