@@ -10,7 +10,6 @@ import {
 	ModelSelectorItem,
 	ModelSelectorList,
 	ModelSelectorLogo,
-	ModelSelectorLogoGroup,
 	ModelSelectorName,
 	ModelSelectorTrigger,
 } from "@/components/ai-elements/model-selector";
@@ -29,38 +28,9 @@ import {
 	usePromptInputController,
 } from "@/components/ai-elements/prompt-input";
 import { CheckIcon } from "lucide-react";
-import { useRef, useState } from "react";
-
-const models = [
-	{
-		id: "gpt-4o-mini",
-		name: "GPT-4o Mini",
-		chef: "OpenAI",
-		chefSlug: "openai",
-		providers: ["openai"],
-	},
-	{
-		id: "deepseek-chat",
-		name: "DeepSeek Chat",
-		chef: "DeepSeek",
-		chefSlug: "deepseek",
-		providers: ["deepseek"],
-	},
-	{
-		id: "claude-haiku-4-5",
-		name: "Claude Haiku 4.5",
-		chef: "Anthropic",
-		chefSlug: "anthropic",
-		providers: ["anthropic"],
-	},
-	{
-		id: "gemini-3-flash-preview",
-		name: "Gemini 3 Flash Preview",
-		chef: "Google",
-		chefSlug: "google",
-		providers: ["google"],
-	},
-];
+import { useRef, useState, useEffect, useMemo } from "react";
+import { useModelsStore } from "@/stores/models-store";
+import { Model } from "@/types/models";
 
 interface ChatPromptInputProps {
 	onSubmit: (message: PromptInputMessage) => void;
@@ -81,6 +51,8 @@ const ChatPromptInput = ({
 	selectedModel: externalSelectedModel,
 	readOnlyModel = false,
 }: ChatPromptInputProps) => {
+	const models = useModelsStore((state) => state.models);
+	const fetchModels = useModelsStore((state) => state.fetchModels);
 	const [model, setModel] = useState<string | undefined>(undefined);
 	const [modelSelectorOpen, setModelSelectorOpen] = useState(false);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -92,6 +64,17 @@ const ChatPromptInput = ({
 		setModel(modelId);
 		onModelChange?.(modelId);
 	};
+
+	const groupedModels = useMemo(() => {
+		return models.reduce(
+			(acc, model) => {
+				acc[model.chef] = acc[model.chef] || [];
+				acc[model.chef].push(model);
+				return acc;
+			},
+			{} as Record<string, Model[]>,
+		);
+	}, [models]);
 
 	const handleSubmit = (message: PromptInputMessage) => {
 		if (!message) return;
@@ -105,6 +88,13 @@ const ChatPromptInput = ({
 
 		onSubmit(message);
 	};
+
+	useEffect(() => {
+		// Only fetch if we don't have models yet
+		if (models.length === 0) {
+			fetchModels();
+		}
+	}, [fetchModels, models.length]);
 
 	return (
 		<PromptInputProvider>
@@ -162,39 +152,31 @@ const ChatPromptInput = ({
 									<ModelSelectorInput placeholder="Search models..." />
 									<ModelSelectorList>
 										<ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
-										{["OpenAI", "Anthropic", "Google", "DeepSeek"].map(
-											(chef) => (
-												<ModelSelectorGroup heading={chef} key={chef}>
-													{models
-														.filter((m) => m.chef === chef)
-														.map((m) => (
-															<ModelSelectorItem
-																key={m.id}
-																onSelect={() => {
-																	handleModelChange(m.id);
-																	setModelSelectorOpen(false);
-																}}
-																value={m.id}
-															>
-																<ModelSelectorLogo provider={m.chefSlug} />
-																<ModelSelectorName>{m.name}</ModelSelectorName>
-																<ModelSelectorLogoGroup>
-																	{m.providers.map((provider) => (
-																		<ModelSelectorLogo
-																			key={provider}
-																			provider={provider}
-																		/>
-																	))}
-																</ModelSelectorLogoGroup>
-																{currentModel === m.id ? (
-																	<CheckIcon className="ml-auto size-4" />
-																) : (
-																	<div className="ml-auto size-4" />
-																)}
-															</ModelSelectorItem>
-														))}
+
+										{Object.entries(groupedModels).map(
+											([chefName, chefModels]) => (
+												<ModelSelectorGroup heading={chefName} key={chefName}>
+													{chefModels.map((m) => (
+														<ModelSelectorItem
+															key={m.id}
+															onSelect={() => {
+																handleModelChange(m.id);
+																setModelSelectorOpen(false);
+															}}
+															value={m.id}
+														>
+															<ModelSelectorLogo provider={m.chefSlug} />
+															<ModelSelectorName>{m.name}</ModelSelectorName>
+
+															{currentModel === m.id ? (
+																<CheckIcon className="ml-auto size-4" />
+															) : (
+																<div className="ml-auto size-4" />
+															)}
+														</ModelSelectorItem>
+													))}
 												</ModelSelectorGroup>
-											)
+											),
 										)}
 									</ModelSelectorList>
 								</ModelSelectorContent>
@@ -234,7 +216,7 @@ const SubmitButton = ({
 				"flex items-center justify-center rounded-full w-10 h-10 transition-all",
 				isDisabled
 					? "bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed"
-					: "bg-black dark:bg-white text-white font-bold dark:text-black hover:scale-105 cursor-pointer"
+					: "bg-black dark:bg-white text-white font-bold dark:text-black hover:scale-105 cursor-pointer",
 			)}
 		>
 			{isStreaming ? (

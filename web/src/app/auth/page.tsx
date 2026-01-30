@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import {
 	Card,
 	CardContent,
-	CardDescription,
 	CardFooter,
 	CardHeader,
 	CardTitle,
@@ -122,8 +121,19 @@ export default function AuthPage() {
 							value={password}
 							onChange={(e) => setPassword(e.target.value)}
 							required
-							minLength={8}
 						/>
+
+						<div className="h-5">
+							<p
+								className={`text-xs transition-all duration-300 ease-in-out ${
+									password.length > 0 && password.length < 8
+										? "opacity-100 translate-y-0"
+										: "opacity-0 -translate-y-1 pointer-events-none"
+								}`}
+							>
+								Password must be at least 8 characters
+							</p>
+						</div>
 					</div>
 				</CardContent>
 				<CardFooter className="flex flex-col gap-4">
@@ -135,8 +145,8 @@ export default function AuthPage() {
 						{isLoading
 							? "Loading..."
 							: mode === "signin"
-							? "Sign In"
-							: "Sign Up"}
+								? "Sign In"
+								: "Sign Up"}
 					</Button>
 
 					{providers?.google && (

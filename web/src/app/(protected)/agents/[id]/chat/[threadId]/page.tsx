@@ -52,7 +52,6 @@ const ChatPage = () => {
 	const threadId = params.threadId as string;
 	const hasInitialized = useRef(false);
 	const [threadModel, setThreadModel] = useState<string | undefined>(undefined);
-	const [isAwaitingResponse, setIsAwaitingResponse] = useState(false);
 	const { mcpServers } = useMcpServersStore();
 	const {
 		messages,
@@ -79,11 +78,19 @@ const ChatPage = () => {
 		}),
 		sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
 		onFinish: () => {
-			setIsAwaitingResponse(false);
 			const audio = new Audio("/success.mp3");
 			audio.play().catch(() => {});
 		},
 	});
+
+	// Derived value: true when awaiting first content from the assistant
+	const isAwaitingResponse =
+		status === "submitted" ||
+		(status === "streaming" &&
+			messages.length > 0 &&
+			!messages[messages.length - 1].parts.some(
+				(p) => p.type === "text" && p.text.length > 0,
+			));
 
 	const handleSubmit = (message: PromptInputMessage) => {
 		if (message && "text" in message && message.text?.trim()) {
@@ -106,19 +113,11 @@ const ChatPage = () => {
 				sendMessage({ text: data.thread.firstMessageContent });
 			} else {
 				setMessages(data.messages);
-				console.log(data.messages);
 			}
 		};
 
 		initializeChat();
 	}, [threadId, setMessages, sendMessage]);
-
-	// Track when we're awaiting the first token
-	useEffect(() => {
-		if (status === "submitted") {
-			setIsAwaitingResponse(true);
-		}
-	}, [status]);
 
 	return (
 		<div className="h-full flex flex-col w-full overflow-hidden">
@@ -273,8 +272,7 @@ const ChatPage = () => {
 							</Fragment>
 						))}
 
-						{(status === "submitted" ||
-							(status === "streaming" && isAwaitingResponse)) && (
+						{isAwaitingResponse && (
 							<div>
 								<Message from="assistant">
 									<div className="w-full flex flex-col gap-2">

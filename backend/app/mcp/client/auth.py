@@ -50,7 +50,6 @@ class ServerlessOAuthProvider(OAuthClientProvider):
                 client_secret=self._client_secret,
                 **self.context.client_metadata.model_dump()
             )
-            print(self.context.client_info)
         
         if self.context.current_tokens:
             self.context.update_token_expiry(self.context.current_tokens)
@@ -109,11 +108,9 @@ class ServerlessOAuthProvider(OAuthClientProvider):
             auth_params["resource"] = self.context.get_resource_url()
 
         if self.context.client_metadata.scope:
-            print("scope", self.context.client_metadata)
             auth_params["scope"] = self.context.client_metadata.scope
 
         authorization_url = f"{auth_endpoint}?{urlencode(auth_params)}"
-        print("authorization_url", authorization_url)
         raise OAuthAuthorizationRequired(authorization_url)
 
     # --- HELPER FOR PHASE 2 ---

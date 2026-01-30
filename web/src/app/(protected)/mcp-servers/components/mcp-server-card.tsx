@@ -1,7 +1,7 @@
 "use client";
 
 import { MCPServer, OfficialMCPServer } from "@/types/mcp-servers";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardHeader } from "@/components/ui/card";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Plus, CheckIcon } from "lucide-react";

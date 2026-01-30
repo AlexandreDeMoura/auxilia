@@ -52,10 +52,7 @@ export default function AgentMCPServer({
 					await fetchTools();
 				}
 			} else {
-				const response = await api.delete(
-					`/agents/${agent.id}/mcp-servers/${serverId}`,
-				);
-				console.log("response", response);
+				await api.delete(`/agents/${agent.id}/mcp-servers/${serverId}`);
 
 				// Notify parent to update
 				onUpdate?.();
@@ -75,7 +72,6 @@ export default function AgentMCPServer({
 		try {
 			const res = await api.get(`/mcp-servers/${server.id}/list-tools`);
 			const fetchedTools = res.data;
-			console.log("fetchedTools", fetchedTools);
 			setTools(fetchedTools);
 			setToolsFetched(true);
 		} catch (error: unknown) {
@@ -94,7 +90,6 @@ export default function AgentMCPServer({
 				"auth_url" in error.response.data
 			) {
 				const authUrl = error.response.data.auth_url as string;
-				console.log("OAuth required, opening popup:", authUrl);
 
 				const popup = window.open(authUrl, "_blank", "width=600,height=700");
 

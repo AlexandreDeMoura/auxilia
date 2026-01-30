@@ -14,6 +14,18 @@ export default function AgentList() {
 			.then((response) => setAgents(response.data))
 			.catch(console.error);
 	}, []);
+
+	if (agents.length === 0) {
+		return (
+			<div className="flex items-center justify-center p-12 border border-gray-200 rounded-lg">
+				<div className="text-gray-500">
+					No agents configured. Click the &quot;Create an agent&quot; button to
+					get started.
+				</div>
+			</div>
+		);
+	}
+
 	return (
 		<div className="w-full mx-auto">
 			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

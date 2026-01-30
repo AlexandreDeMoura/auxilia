@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from app.adapters.message_adapter import deserialize_to_ui_messages
+from app.agents.models import AgentDB
 from app.agents.runtime import AgentRuntime
 from app.database import get_db
 from app.models.message import Message
@@ -52,9 +53,17 @@ async def read_thread(thread_id: str, db: AsyncSession = Depends(get_db)) -> dic
 
 @router.get("/")
 async def get_threads(db: AsyncSession = Depends(get_db), current_user: UserDB = Depends(get_current_user)) -> list[ThreadRead]:
-    result = await db.execute(select(ThreadDB).where(ThreadDB.user_id == current_user.id).order_by(ThreadDB.created_at.desc()))
-    threads = result.scalars().all()
-    return [ThreadRead.model_validate(thread) for thread in threads]
+    result = await db.execute(
+        select(ThreadDB, AgentDB.name, AgentDB.emoji)
+        .join(AgentDB, ThreadDB.agent_id == AgentDB.id)
+        .where(ThreadDB.user_id == current_user.id)
+        .order_by(ThreadDB.created_at.desc())
+    )
+    rows = result.all()
+    return [
+        ThreadRead.model_validate(thread, update={"agent_name": agent_name, "agent_emoji": agent_emoji})
+        for thread, agent_name, agent_emoji in rows
+    ]
 
 
 @router.post("/")

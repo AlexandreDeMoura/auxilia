@@ -48,7 +48,7 @@ export default function MCPServerList() {
 
 	if (mcpServers.length === 0) {
 		return (
-			<div className="flex items-center justify-center p-12">
+			<div className="flex items-center justify-center p-12 border border-gray-200 rounded-lg">
 				<div className="text-gray-500">
 					No MCP servers configured. Click the &quot;Add MCP Server&quot; button
 					to get started.

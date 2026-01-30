@@ -3,24 +3,33 @@ import type { NextRequest } from "next/server";
 
 const PUBLIC_PATHS = ["/auth"];
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
 	const { pathname } = request.nextUrl;
 	const accessToken = request.cookies.get("access_token")?.value;
-
 	const isPublicPath = PUBLIC_PATHS.some((path) => pathname.startsWith(path));
+	if (accessToken) {
+		try {
+			const verifyRes = await fetch(`${process.env.BACKEND_URL}/auth/me`, {
+				headers: { Cookie: `access_token=${accessToken}` },
+			});
 
-	// If user is not authenticated and trying to access protected route
-	if (!accessToken && !isPublicPath) {
-		const url = request.nextUrl.clone();
-		url.pathname = "/auth";
-		return NextResponse.redirect(url);
+			if (verifyRes.ok) {
+				if (isPublicPath) {
+					return NextResponse.redirect(new URL("/agents", request.url));
+				}
+				return NextResponse.next();
+			}
+		} catch (err) {
+			console.error("Backend unreachable or validation failed", err);
+		}
+
+		const response = NextResponse.redirect(new URL("/auth", request.url));
+		response.cookies.delete("access_token");
+		return response;
 	}
 
-	// If user is authenticated and trying to access auth page
-	if (accessToken && isPublicPath) {
-		const url = request.nextUrl.clone();
-		url.pathname = "/agents";
-		return NextResponse.redirect(url);
+	if (!isPublicPath) {
+		return NextResponse.redirect(new URL("/auth", request.url));
 	}
 
 	return NextResponse.next();

@@ -40,6 +40,24 @@ import { NewThreadDialog } from "@/components/layout/app-sidebar/new-thread-dial
 import { useThreadsStore } from "@/stores/threads-store";
 import { useUserStore } from "@/stores/user-store";
 import { api } from "@/lib/api/client";
+import { Thread } from "@/types/threads";
+
+function formatThreadSubtitle(thread: Thread): string {
+	const date = new Date(thread.createdAt);
+	const now = new Date();
+	const diffMs = now.getTime() - date.getTime();
+	const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+	if (diffDays === 0) {
+		return "Today";
+	} else if (diffDays === 1) {
+		return "Yesterday";
+	} else if (diffDays < 7) {
+		return `${diffDays} days ago`;
+	} else {
+		return date.toLocaleDateString();
+	}
+}
 
 const navItems = [
 	{
@@ -98,7 +116,9 @@ export function AppSidebar() {
 						</div>
 						<div className="flex flex-col">
 							<span className="text-sm font-semibold">auxilia</span>
-							<span className="text-xs text-muted-foreground">AI Platform</span>
+							<span className="text-xs text-muted-foreground">
+								Agent Platform
+							</span>
 						</div>
 					</div>
 				</SidebarHeader>
@@ -120,7 +140,6 @@ export function AppSidebar() {
 					</SidebarGroup>
 
 					<SidebarGroup className="flex-1 min-h-0 overflow-hidden">
-						<SidebarGroupLabel>Chat History</SidebarGroupLabel>
 						<SidebarGroupContent className="overflow-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 							<SidebarMenu>
 								{threads.map((thread) => (
@@ -132,13 +151,20 @@ export function AppSidebar() {
 												`/agents/${thread.agentId}/chat/${thread.id}`
 											}
 											tooltip={thread.firstMessageContent}
+											className="h-auto"
 										>
 											<Link
 												href={`/agents/${thread.agentId}/chat/${thread.id}`}
+												className="p-1"
 											>
-												<span className="truncate">
-													{thread.firstMessageContent}
-												</span>
+												<div className="flex-1 min-w-0 text-left">
+													<div className="text-sm font-medium truncate">
+														{thread.firstMessageContent}
+													</div>
+													<div className="text-xs text-muted-foreground truncate">
+														{thread.agentName} • {formatThreadSubtitle(thread)}
+													</div>
+												</div>
 											</Link>
 										</SidebarMenuButton>
 										<DropdownMenu>

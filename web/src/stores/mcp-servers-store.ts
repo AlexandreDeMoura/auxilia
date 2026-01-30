@@ -15,7 +15,6 @@ export const useMcpServersStore = create<McpServersState>((set, get) => ({
 	mcpServers: [],
 	isInitialized: false,
 	fetchMcpServers: async () => {
-		// Only fetch if not already initialized
 		if (get().isInitialized) {
 			return;
 		}
@@ -34,13 +33,13 @@ export const useMcpServersStore = create<McpServersState>((set, get) => ({
 	updateMcpServer: (mcpServerId, mcpServer) =>
 		set((state) => ({
 			mcpServers: state.mcpServers.map((server) =>
-				server.id === mcpServerId ? mcpServer : server
+				server.id === mcpServerId ? mcpServer : server,
 			),
 		})),
 	removeMcpServer: (mcpServerId) =>
 		set((state) => ({
 			mcpServers: state.mcpServers.filter(
-				(server) => server.id !== mcpServerId
+				(server) => server.id !== mcpServerId,
 			),
 		})),
 }));

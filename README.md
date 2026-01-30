@@ -4,7 +4,7 @@ A lightweight web MCP client designed to host your MCP-powered AI assistants. au
 
 Built with langgraph and the AI SDK.
 
-## Setup
+## Quick start
 
 1. Clone the repository
 2. Copy the .env.example file and rename it .env

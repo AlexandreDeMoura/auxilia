@@ -15,7 +15,6 @@ export const useAgentsStore = create<AgentsState>((set, get) => ({
 	agents: [],
 	isInitialized: false,
 	fetchAgents: async () => {
-		// Only fetch if not already initialized
 		if (get().isInitialized) {
 			return;
 		}
@@ -29,8 +28,7 @@ export const useAgentsStore = create<AgentsState>((set, get) => ({
 			throw error;
 		}
 	},
-	addAgent: (agent) =>
-		set((state) => ({ agents: [agent, ...state.agents] })),
+	addAgent: (agent) => set((state) => ({ agents: [agent, ...state.agents] })),
 	updateAgent: (agentId, agent) =>
 		set((state) => ({
 			agents: state.agents.map((a) => (a.id === agentId ? agent : a)),

@@ -50,3 +50,5 @@ class ThreadRead(ThreadBase):
     id: UUID
     created_at: datetime
     updated_at: datetime
+    agent_name: str | None = None
+    agent_emoji: str | None = None

@@ -33,7 +33,11 @@ const StarterChatPage = () => {
 				modelId: selectedModel,
 			});
 
-			const thread = response.data;
+			const thread = {
+				...response.data,
+				agentName: agent?.name ?? null,
+				agentEmoji: agent?.emoji ?? null,
+			};
 
 			addThread(thread);
 
