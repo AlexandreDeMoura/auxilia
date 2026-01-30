@@ -2,6 +2,8 @@
 
 A lightweight web MCP client designed to host your MCP-powered AI assistants. auxilia is designed to only support remote MCP servers.
 
+Built with langgraph and the AI SDK.
+
 ## Setup
 
 1. Clone the repository
