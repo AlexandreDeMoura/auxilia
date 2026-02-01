@@ -361,6 +361,7 @@ class AISDKStreamAdapter:
                     pass
 
         except Exception as e:
+            print(f"Stream processing error: {str(e)}")
             yield self._emit_event(
                 "error", errorText=f"Stream processing error: {str(e)}"
             )

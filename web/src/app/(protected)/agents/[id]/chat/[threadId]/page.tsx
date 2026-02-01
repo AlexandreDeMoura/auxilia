@@ -83,7 +83,6 @@ const ChatPage = () => {
 		},
 	});
 
-	// Derived value: true when awaiting first content from the assistant
 	const isAwaitingResponse =
 		status === "submitted" ||
 		(status === "streaming" &&
@@ -93,8 +92,9 @@ const ChatPage = () => {
 			));
 
 	const handleSubmit = (message: PromptInputMessage) => {
+		console.log("message", message);
 		if (message && "text" in message && message.text?.trim()) {
-			sendMessage({ text: message.text });
+			sendMessage(message);
 		}
 	};
 

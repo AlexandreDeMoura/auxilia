@@ -1,6 +1,6 @@
 import json
 import uuid
-
+import logging
 from langchain_core.messages import (
     AIMessage,
     HumanMessage,
@@ -8,8 +8,56 @@ from langchain_core.messages import (
     ToolMessage,
 )
 
-from app.models.message import Message, TextMessagePart, ToolMessagePart, ReasoningMessagePart
+from app.models.message import Message, TextMessagePart, ToolMessagePart, ReasoningMessagePart, FileMessagePart
 
+import logging
+
+def to_langchain_file_part(file_part) -> dict | None:
+    """
+    The "Battle-Tested" Universal Converter.
+    Satisfies Anthropic's 'media_type' requirement and 
+    Gemini/LangChain's 'mime_type' requirements simultaneously.
+    """
+    try:
+        # Standardize the media type string
+        m_type = getattr(file_part, 'mediaType', 'unknown')
+        url = getattr(file_part, 'url', '')
+        
+        # Extract raw base64 data (strip the data:image/png;base64, prefix)
+        base64_data = url.split(',', 1)[1] if ',' in url else url
+
+        if m_type.startswith('image/'):
+            return {
+                "type": "image",
+                "source_type": "base64",  # Required by Google legacy path
+                "data": base64_data,      # Required by Google legacy path
+                "mime_type": m_type,      # Required by Gemini & LC validation
+                "source": {
+                    "type": "base64",
+                    "media_type": m_type, # Required by Anthropic API
+                    "data": base64_data,
+                }
+            }
+        
+        elif any(t in m_type for t in ['pdf', 'text', 'csv']):
+            # For documents, standard LC format is usually sufficient
+            return {
+                "type": "file",
+                "source_type": "base64",
+                "mime_type": m_type,
+                "data": base64_data,
+                "source": {
+                    "type": "base64",
+                    "media_type": m_type,
+                    "data": base64_data,
+                }
+            }
+
+        return None
+
+    except Exception as e:
+        logging.error(f"Error converting file part: {e}")
+        return None
 
 def extract_text_content(message: Message) -> list[str]:
     """Extract text content from message parts."""
@@ -24,7 +72,16 @@ def extract_text_content(message: Message) -> list[str]:
         content_parts.append(message.content)
 
     content = " ".join(content_parts)
-    return content
+    return {"type": "text", "text": content}
+
+def extract_file_content(message: Message) -> list[str]:
+    """Extract file content from message parts."""
+    file_parts = []
+    if hasattr(message, "parts") and message.parts:
+        for part in message.parts:
+            if part.type == "file":
+                file_parts.append(part)
+    return file_parts
 
 
 def _is_pending_approval(part: ToolMessagePart) -> bool:
@@ -104,7 +161,12 @@ def to_langchain_message(message: Message) -> HumanMessage:
     Returns:
         LangChain HumanMessage object
     """
-    content = extract_text_content(message)
+    content = [extract_text_content(message)]
+    file_parts = extract_file_content(message)
+    
+    for file_part in file_parts:
+        content.append(to_langchain_file_part(file_part))
+    
     return HumanMessage(content=content)
 
 

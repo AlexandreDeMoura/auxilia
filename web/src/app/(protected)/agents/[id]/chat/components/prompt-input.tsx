@@ -81,11 +81,10 @@ const ChatPromptInput = ({
 
 		const hasText = Boolean("text" in message && message.text);
 		const hasAttachments = Boolean("files" in message && message.files?.length);
-
+		console.log("hasText", hasText, "hasAttachments", hasAttachments);
 		if (!(hasText || hasAttachments)) {
 			return;
 		}
-
 		onSubmit(message);
 	};
 

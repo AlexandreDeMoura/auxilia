@@ -113,7 +113,7 @@ async def invoke(
         model_factory=ChatModelFactory(),
     )
     agent_runtime = await AgentRuntime.create(thread=thread, db=db, deps=deps)
-
+    
     return StreamingResponse(
         agent_runtime.stream(messages, message_id=messageId),
         media_type="text/plain",

@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 import {
 	Command,
 	CommandDialog,
@@ -170,7 +172,7 @@ export const ModelSelectorLogo = ({
 	className,
 	...props
 }: ModelSelectorLogoProps) => (
-	<img
+	<Image
 		{...props}
 		alt={`${provider} logo`}
 		className={cn("size-3", className)}

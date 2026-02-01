@@ -9,6 +9,7 @@ class ModelProviderType(str, Enum):
     anthropic = "anthropic"
     google = "google"
     ollama = "ollama"
+    litellm = "litellm"
 
 
 class ModelProviderRead(SQLModel):

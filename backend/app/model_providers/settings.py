@@ -10,6 +10,8 @@ class ModelProviderSettings(BaseSettings):
     deepseek_api_key: str | None = None
     anthropic_api_key: str | None = None
     google_api_key: str | None = None
+    litellm_api_key: str | None = None
+    litellm_api_base: str | None = None
 
     class Config:
         env_file = ROOT_ENV

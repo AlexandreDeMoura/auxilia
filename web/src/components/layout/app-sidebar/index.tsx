@@ -12,7 +12,6 @@ import {
 	Trash2,
 	LogOut,
 } from "lucide-react";
-
 import {
 	Sidebar,
 	SidebarContent,
@@ -26,38 +25,17 @@ import {
 	SidebarMenuItem,
 	SidebarMenuAction,
 } from "@/components/ui/sidebar";
-
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-
 import { NewThreadDialog } from "@/components/layout/app-sidebar/new-thread-dialog";
 import { useThreadsStore } from "@/stores/threads-store";
 import { useUserStore } from "@/stores/user-store";
 import { api } from "@/lib/api/client";
-import { Thread } from "@/types/threads";
-
-function formatThreadSubtitle(thread: Thread): string {
-	const date = new Date(thread.createdAt);
-	const now = new Date();
-	const diffMs = now.getTime() - date.getTime();
-	const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-	if (diffDays === 0) {
-		return "Today";
-	} else if (diffDays === 1) {
-		return "Yesterday";
-	} else if (diffDays < 7) {
-		return `${diffDays} days ago`;
-	} else {
-		return date.toLocaleDateString();
-	}
-}
 
 const navItems = [
 	{
@@ -162,7 +140,7 @@ export function AppSidebar() {
 														{thread.firstMessageContent}
 													</div>
 													<div className="text-xs text-muted-foreground truncate">
-														{thread.agentName} • {formatThreadSubtitle(thread)}
+														{thread.agentName}
 													</div>
 												</div>
 											</Link>
