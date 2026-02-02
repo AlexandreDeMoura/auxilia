@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { v4 as uuidv4 } from "uuid";
 import { type PromptInputMessage } from "@/components/ai-elements/prompt-input";
 import ChatPromptInput from "./components/prompt-input";
 import { useThreadsStore } from "@/stores/threads-store";
+import { usePendingMessageStore } from "@/stores/pending-message-store";
 import { api } from "@/lib/api/client";
 import { Agent } from "@/types/agents";
 import { NewThreadDialog } from "@/components/layout/app-sidebar/new-thread-dialog";
@@ -16,21 +18,40 @@ const StarterChatPage = () => {
 	const [isCreating, setIsCreating] = useState(false);
 	const [selectedModel, setSelectedModel] = useState<string>("deepseek-chat");
 	const addThread = useThreadsStore((state) => state.addThread);
+	const setPendingMessage = usePendingMessageStore(
+		(state) => state.setPendingMessage,
+	);
 	const [agent, setAgent] = useState<Agent | null>(null);
 	const [isAgentDialogOpen, setIsAgentDialogOpen] = useState(false);
 
 	const handleSubmit = async (message: PromptInputMessage) => {
-		if (!message || !("text" in message) || !message.text?.trim()) {
+		if (!message) return;
+
+		const hasText = "text" in message && message.text?.trim();
+		const hasFiles =
+			"files" in message && message.files && message.files.length > 0;
+
+		if (!hasText && !hasFiles) {
 			return;
 		}
 
 		setIsCreating(true);
 
 		try {
+			// Generate thread ID on frontend
+			const threadId = uuidv4();
+
+			// Store the pending message (with files) to be consumed by the thread page
+			setPendingMessage(threadId, message);
+
+			// Extract text for display purposes (thread list preview)
+			const textContent = "text" in message ? message.text : undefined;
+
 			const response = await api.post("/threads", {
+				id: threadId,
 				agentId: agentId,
-				firstMessageContent: message.text,
 				modelId: selectedModel,
+				firstMessageContent: textContent,
 			});
 
 			const thread = {
@@ -41,7 +62,7 @@ const StarterChatPage = () => {
 
 			addThread(thread);
 
-			router.push(`/agents/${agentId}/chat/${thread.id}`);
+			router.push(`/agents/${agentId}/chat/${threadId}`);
 		} catch (error) {
 			console.error("Error creating thread:", error);
 			setIsCreating(false);

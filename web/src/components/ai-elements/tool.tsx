@@ -204,7 +204,10 @@ export const ToolInput = ({ className, input, ...props }: ToolInputProps) => (
 			Parameters
 		</h4>
 		<div className="min-w-0 overflow-hidden rounded-md bg-muted/60">
-			<CodeBlock code={JSON.stringify(input, null, 2)} language="json" />
+			<CodeBlock
+				code={JSON.stringify(input, null, 2).replace(/\\n/g, "\n")}
+				language="json"
+			/>
 		</div>
 	</div>
 );
@@ -226,14 +229,18 @@ export const ToolOutput = ({
 
 	let Output: ReactNode = null;
 
-	// Only render output if there's no error text
 	if (!errorText && output != null) {
 		if (typeof output === "object" && !isValidElement(output)) {
 			Output = (
-				<CodeBlock code={JSON.stringify(output, null, 2)} language="json" />
+				<CodeBlock
+					code={JSON.stringify(output, null, 2).replace(/\\n/g, "\n")}
+					language="json"
+				/>
 			);
 		} else if (typeof output === "string") {
-			Output = <CodeBlock code={output} language="json" />;
+			Output = (
+				<CodeBlock code={output.replace(/\\n/g, "\n")} language="json" />
+			);
 		} else {
 			Output = <div>{output as ReactNode}</div>;
 		}

@@ -1,7 +1,7 @@
 "use client";
 
-import * as React from "react";
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -32,9 +32,9 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { NewThreadDialog } from "@/components/layout/app-sidebar/new-thread-dialog";
 import { useThreadsStore } from "@/stores/threads-store";
 import { useUserStore } from "@/stores/user-store";
+import { useAgentsStore } from "@/stores/agents-store";
 import { api } from "@/lib/api/client";
 
 const navItems = [
@@ -60,15 +60,17 @@ function getInitials(name: string | undefined): string {
 }
 
 export function AppSidebar() {
+	const router = useRouter();
 	const pathname = usePathname();
-	const [open, setOpen] = React.useState(false);
+	const { agents, fetchAgents } = useAgentsStore();
 	const { threads, fetchThreads, removeThread } = useThreadsStore();
 	const { user, fetchUser, logout } = useUserStore();
 
 	useEffect(() => {
 		fetchUser();
 		fetchThreads();
-	}, [fetchUser, fetchThreads]);
+		fetchAgents();
+	}, [fetchUser, fetchThreads, fetchAgents]);
 
 	const handleDeleteThread = (threadId: string) => {
 		api
@@ -107,8 +109,13 @@ export function AppSidebar() {
 							<SidebarMenuItem>
 								<SidebarMenuButton
 									tooltip="New thread"
-									onClick={() => setOpen(true)}
+									onClick={() => {
+										if (agents.length > 0) {
+											router.push(`/agents/${agents[0].id}/chat`);
+										}
+									}}
 									className="cursor-pointer"
+									disabled={agents.length === 0}
 								>
 									<SquarePen />
 									<span>New thread</span>
@@ -237,8 +244,6 @@ export function AppSidebar() {
 					</SidebarMenu>
 				</SidebarFooter>
 			</Sidebar>
-
-			<NewThreadDialog open={open} onOpenChange={setOpen} />
 		</>
 	);
 }

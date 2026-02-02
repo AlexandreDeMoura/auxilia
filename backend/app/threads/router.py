@@ -70,7 +70,9 @@ async def get_threads(db: AsyncSession = Depends(get_db), current_user: UserDB =
 async def create_thread(
     thread_data: ThreadCreate, db: AsyncSession = Depends(get_db), current_user: UserDB = Depends(get_current_user)
 ) -> ThreadRead:
-    thread = ThreadDB(**thread_data.model_dump(), user_id=current_user.id)
+    # Exclude None id so ThreadDB uses its default_factory
+    thread_dict = thread_data.model_dump(exclude_none=True)
+    thread = ThreadDB(**thread_dict, user_id=current_user.id)
     db.add(thread)
     await db.commit()
     await db.refresh(thread)

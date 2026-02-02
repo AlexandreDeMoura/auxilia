@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import {
 	MessageActions,
 	MessageAction,
@@ -22,6 +23,8 @@ import {
 	ToolInput,
 	ToolOutput,
 } from "@/components/ai-elements/tool";
+import type { AttachmentData } from "@/components/ai-elements/attachments";
+
 import {
 	Conversation,
 	ConversationContent,
@@ -32,6 +35,17 @@ import {
 	ErrorContent,
 	ErrorDetails,
 } from "@/components/ai-elements/error";
+import {
+	Attachment,
+	AttachmentPreview,
+	AttachmentHoverCard,
+	AttachmentHoverCardTrigger,
+	AttachmentInfo,
+	AttachmentHoverCardContent,
+	getMediaCategory,
+	getAttachmentLabel,
+	Attachments,
+} from "@/components/ai-elements/attachments";
 import { type PromptInputMessage } from "@/components/ai-elements/prompt-input";
 import { Button } from "@/components/ui/button";
 import ChatPromptInput from "../components/prompt-input";
@@ -46,6 +60,7 @@ import { useParams } from "next/navigation";
 import { api, API_BASE_URL } from "@/lib/api/client";
 import { Loader } from "../components/loader";
 import { useMcpServersStore } from "@/stores/mcp-servers-store";
+import { usePendingMessageStore } from "@/stores/pending-message-store";
 
 const ChatPage = () => {
 	const params = useParams();
@@ -91,10 +106,19 @@ const ChatPage = () => {
 				(p) => p.type === "text" && p.text.length > 0,
 			));
 
+	const consumePendingMessage = usePendingMessageStore(
+		(state) => state.consumePendingMessage,
+	);
+
 	const handleSubmit = (message: PromptInputMessage) => {
-		console.log("message", message);
-		if (message && "text" in message && message.text?.trim()) {
-			sendMessage(message);
+		if (!message) return;
+
+		const hasText = "text" in message && message.text?.trim();
+		const hasFiles =
+			"files" in message && message.files && message.files.length > 0;
+
+		if (hasText || hasFiles) {
+			sendMessage(message as Parameters<typeof sendMessage>[0]);
 		}
 	};
 
@@ -109,168 +133,267 @@ const ChatPage = () => {
 
 			setThreadModel(data.thread.modelId);
 
-			if (data.thread?.firstMessageContent && data.messages.length === 0) {
-				sendMessage({ text: data.thread.firstMessageContent });
+			const pendingMessage = consumePendingMessage(threadId);
+			if (pendingMessage) {
+				sendMessage(pendingMessage as Parameters<typeof sendMessage>[0]);
 			} else {
 				setMessages(data.messages);
 			}
 		};
 
 		initializeChat();
-	}, [threadId, setMessages, sendMessage]);
+	}, [threadId, setMessages, sendMessage, consumePendingMessage]);
 
 	return (
 		<div className="h-full flex flex-col w-full overflow-hidden">
 			<div className="h-full relative flex flex-1 flex-col min-h-0 w-full">
 				<Conversation>
 					<ConversationContent className="max-w-4xl mx-auto w-full lg:px-10 px-6">
-						{messages.map((message, messageIndex) => (
-							<Fragment key={message.id}>
-								{message.parts.map((part, i) => {
-									switch (part.type) {
-										case "text":
-											const isLastMessagePart =
-												i === message.parts.length - 1 &&
-												messageIndex === messages.length - 1 &&
-												status !== "streaming";
+						{messages.map((message, messageIndex) => {
+							// Group all file parts together
+							const fileParts = message.parts
+								.map((part, i) => ({ part, index: i }))
+								.filter(({ part }) => part.type === "file");
+							const otherParts = message.parts
+								.map((part, i) => ({ part, index: i }))
+								.filter(({ part }) => part.type !== "file");
 
-											return (
-												<Fragment key={`${message.id}-${i}`}>
-													<Message from={message.role}>
-														<MessageContent>
-															<MessageResponse>{part.text}</MessageResponse>
-														</MessageContent>
-													</Message>
-													{message.role === "assistant" &&
-														isLastMessagePart && (
-															<MessageActions>
-																<MessageAction
-																	onClick={() => regenerate()}
-																	label="Retry"
-																>
-																	<RefreshCcwIcon className="size-3" />
-																</MessageAction>
-																<MessageAction
-																	onClick={() =>
-																		navigator.clipboard.writeText(part.text)
-																	}
-																	label="Copy"
-																>
-																	<CopyIcon className="size-3" />
-																</MessageAction>
-															</MessageActions>
-														)}
-												</Fragment>
-											);
-										case "reasoning":
-											// Check if this specific reasoning part is still being streamed
-											// This should be true only when this reasoning part is actively being written to
-											const isReasoningStreaming =
-												status === "streaming" &&
-												messageIndex === messages.length - 1 &&
-												i === message.parts.length - 1;
+							// Convert file parts to attachment data
+							const attachments: AttachmentData[] = fileParts.map(
+								({ part, index }) => {
+									const filePart = part as {
+										type: "file";
+										url: string;
+										filename?: string;
+										mediaType?: string;
+									};
+									const isImage = filePart.mediaType?.includes("image");
+									const renderUrl = isImage
+										? filePart.url.startsWith("data:")
+											? filePart.url
+											: `data:image/jpeg;base64,${filePart.url}`
+										: filePart.url;
 
-											return (
-												<Reasoning
-													key={`${message.id}-${i}`}
-													className="w-full"
-													isStreaming={isReasoningStreaming}
-												>
-													<ReasoningTrigger />
-													<ReasoningContent>{part.text}</ReasoningContent>
-												</Reasoning>
-											);
-										default:
-											if (part.type.startsWith("tool-")) {
-												const toolPart = part as ToolUIPart;
-												const serverName = part.type
-													.split("_")[0]
-													.replace("tool-", "");
-												const toolName = part.type
-													.split("_")
-													.slice(1)
-													.join("_");
+									return {
+										id: `${message.id}-${index}`,
+										url: renderUrl,
+										type: "file" as const,
+										filename:
+											filePart.filename ||
+											(isImage ? "Image.jpg" : "Attachment"),
+										mediaType: isImage
+											? filePart.mediaType || "image/jpeg"
+											: filePart.mediaType || "application/octet-stream",
+									};
+								},
+							);
+
+							return (
+								<Fragment key={message.id}>
+									{/* Render all file attachments together */}
+									{attachments.length > 0 && (
+										<div className="flex justify-end">
+											<Attachments variant="inline">
+												{attachments.map((attachment) => {
+													const mediaCategory = getMediaCategory(attachment);
+													const label = getAttachmentLabel(attachment);
+
+													return (
+														<AttachmentHoverCard key={attachment.id}>
+															<AttachmentHoverCardTrigger asChild>
+																<Attachment data={attachment}>
+																	<div className="relative size-5 shrink-0">
+																		<div className="absolute inset-0 transition-opacity group-hover:opacity-0">
+																			<AttachmentPreview />
+																		</div>
+																	</div>
+																	<AttachmentInfo />
+																</Attachment>
+															</AttachmentHoverCardTrigger>
+															<AttachmentHoverCardContent>
+																<div className="space-y-3">
+																	{mediaCategory === "image" &&
+																		attachment.type === "file" &&
+																		attachment.url && (
+																			<div className="flex items-center justify-center overflow-hidden rounded-md border">
+																				<Image
+																					alt={label}
+																					className="object-contain"
+																					height={200}
+																					src={attachment.url}
+																					width={200}
+																				/>
+																			</div>
+																		)}
+																	<div className="space-y-1 px-0.5">
+																		<h4 className="font-semibold text-sm leading-none">
+																			{label}
+																		</h4>
+																		{attachment.mediaType && (
+																			<p className="font-mono text-muted-foreground text-xs">
+																				{attachment.mediaType}
+																			</p>
+																		)}
+																	</div>
+																</div>
+															</AttachmentHoverCardContent>
+														</AttachmentHoverCard>
+													);
+												})}
+											</Attachments>
+										</div>
+									)}
+
+									{/* Render other parts */}
+									{otherParts.map(({ part, index: i }) => {
+										switch (part.type) {
+											case "text":
+												const isLastMessagePart =
+													i === message.parts.length - 1 &&
+													messageIndex === messages.length - 1 &&
+													status !== "streaming";
 
 												return (
-													<Tool
-														key={`${message.id}-${i}`}
-														toolState={toolPart.state}
-													>
-														<ToolHeader
-															title={toolName}
-															type={toolPart.type}
-															state={toolPart.state}
-															approval={toolPart.approval}
-															mcpServerName={serverName}
-															mcpServerIcon={
-																mcpServers.find(
-																	(server) => server.name === serverName,
-																)?.iconUrl
-															}
-														/>
-														<ToolContent>
-															<ToolContentInner>
-																{toolPart.input !== undefined && (
-																	<ToolInput input={toolPart.input} />
-																)}
-																{/* Show output, error, or optimistic rejection message */}
-																{(toolPart.output ||
-																	toolPart.errorText ||
-																	toolPart.state === "input-available" ||
-																	toolPart.state === "input-streaming" ||
-																	(toolPart.state === "approval-responded" &&
-																		toolPart.approval?.approved === false)) && (
-																	<ToolOutput
-																		output={toolPart.output as React.ReactNode}
-																		errorText={
-																			toolPart.errorText ||
-																			(toolPart.state ===
-																				"approval-responded" &&
-																			toolPart.approval?.approved === false
-																				? "Tool execution was rejected by user"
-																				: undefined)
+													<Fragment key={`${message.id}-${i}`}>
+														<Message from={message.role}>
+															<MessageContent>
+																<MessageResponse>{part.text}</MessageResponse>
+															</MessageContent>
+														</Message>
+														{message.role === "assistant" &&
+															isLastMessagePart && (
+																<MessageActions>
+																	<MessageAction
+																		onClick={() => regenerate()}
+																		label="Retry"
+																	>
+																		<RefreshCcwIcon className="size-3" />
+																	</MessageAction>
+																	<MessageAction
+																		onClick={() =>
+																			navigator.clipboard.writeText(part.text)
 																		}
-																	/>
-																)}
-															</ToolContentInner>
-															{/* Tool Approval UI */}
-															{toolPart.state === "approval-requested" && (
-																<ToolFooter>
-																	<Button
-																		variant="default"
-																		className="cursor-pointer"
-																		onClick={() => {
-																			addToolApprovalResponse({
-																				id: toolPart.approval.id,
-																				approved: true,
-																			});
-																		}}
+																		label="Copy"
 																	>
-																		Approve
-																	</Button>
-																	<Button
-																		variant="ghost"
-																		className="cursor-pointer"
-																		onClick={() => {
-																			addToolApprovalResponse({
-																				id: toolPart.approval.id,
-																				approved: false,
-																			});
-																		}}
-																	>
-																		Reject
-																	</Button>
-																</ToolFooter>
+																		<CopyIcon className="size-3" />
+																	</MessageAction>
+																</MessageActions>
 															)}
-														</ToolContent>
-													</Tool>
+													</Fragment>
 												);
-											}
-											return null;
-									}
-								})}
-							</Fragment>
-						))}
+											case "reasoning":
+												// Check if this specific reasoning part is still being streamed
+												// This should be true only when this reasoning part is actively being written to
+												const isReasoningStreaming =
+													status === "streaming" &&
+													messageIndex === messages.length - 1 &&
+													i === message.parts.length - 1;
+
+												return (
+													<Reasoning
+														key={`${message.id}-${i}`}
+														className="w-full"
+														isStreaming={isReasoningStreaming}
+													>
+														<ReasoningTrigger />
+														<ReasoningContent>{part.text}</ReasoningContent>
+													</Reasoning>
+												);
+											default:
+												if (part.type.startsWith("tool-")) {
+													const toolPart = part as ToolUIPart;
+													const serverName = part.type
+														.split("_")[0]
+														.replace("tool-", "");
+													const toolName = part.type
+														.split("_")
+														.slice(1)
+														.join("_");
+
+													return (
+														<Tool
+															key={`${message.id}-${i}`}
+															toolState={toolPart.state}
+														>
+															<ToolHeader
+																title={toolName}
+																type={toolPart.type}
+																state={toolPart.state}
+																approval={toolPart.approval}
+																mcpServerName={serverName}
+																mcpServerIcon={
+																	mcpServers.find(
+																		(server) => server.name === serverName,
+																	)?.iconUrl
+																}
+															/>
+															<ToolContent>
+																<ToolContentInner>
+																	{toolPart.input !== undefined && (
+																		<ToolInput input={toolPart.input} />
+																	)}
+																	{/* Show output, error, or optimistic rejection message */}
+																	{(toolPart.output ||
+																		toolPart.errorText ||
+																		toolPart.state === "input-available" ||
+																		toolPart.state === "input-streaming" ||
+																		(toolPart.state === "approval-responded" &&
+																			toolPart.approval?.approved ===
+																				false)) && (
+																		<ToolOutput
+																			output={
+																				toolPart.output as React.ReactNode
+																			}
+																			errorText={
+																				toolPart.errorText ||
+																				(toolPart.state ===
+																					"approval-responded" &&
+																				toolPart.approval?.approved === false
+																					? "Tool execution was rejected by user"
+																					: undefined)
+																			}
+																		/>
+																	)}
+																</ToolContentInner>
+																{/* Tool Approval UI */}
+																{toolPart.state === "approval-requested" && (
+																	<ToolFooter>
+																		<Button
+																			variant="default"
+																			className="cursor-pointer"
+																			onClick={() => {
+																				addToolApprovalResponse({
+																					id: toolPart.approval.id,
+																					approved: true,
+																				});
+																			}}
+																		>
+																			Approve
+																		</Button>
+																		<Button
+																			variant="ghost"
+																			className="cursor-pointer"
+																			onClick={() => {
+																				addToolApprovalResponse({
+																					id: toolPart.approval.id,
+																					approved: false,
+																				});
+																			}}
+																		>
+																			Reject
+																		</Button>
+																	</ToolFooter>
+																)}
+															</ToolContent>
+														</Tool>
+													);
+												}
+												return null;
+										}
+									})}
+								</Fragment>
+							);
+						})}
 
 						{isAwaitingResponse && (
 							<div>

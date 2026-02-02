@@ -13,37 +13,31 @@ from app.models.message import Message, TextMessagePart, ToolMessagePart, Reason
 import logging
 
 def to_langchain_file_part(file_part) -> dict | None:
-    """
-    The "Battle-Tested" Universal Converter.
-    Satisfies Anthropic's 'media_type' requirement and 
-    Gemini/LangChain's 'mime_type' requirements simultaneously.
-    """
     try:
-        # Standardize the media type string
         m_type = getattr(file_part, 'mediaType', 'unknown')
         url = getattr(file_part, 'url', '')
         
-        # Extract raw base64 data (strip the data:image/png;base64, prefix)
         base64_data = url.split(',', 1)[1] if ',' in url else url
 
         if m_type.startswith('image/'):
             return {
                 "type": "image",
-                "source_type": "base64",  # Required by Google legacy path
-                "data": base64_data,      # Required by Google legacy path
-                "mime_type": m_type,      # Required by Gemini & LC validation
+                "source_type": "base64",
+                "data": base64_data,
+                "filename": file_part.filename,
+                "mime_type": m_type,
                 "source": {
                     "type": "base64",
-                    "media_type": m_type, # Required by Anthropic API
+                    "media_type": m_type,
                     "data": base64_data,
                 }
             }
         
         elif any(t in m_type for t in ['pdf', 'text', 'csv']):
-            # For documents, standard LC format is usually sufficient
             return {
                 "type": "file",
                 "source_type": "base64",
+                "filename": file_part.filename,
                 "mime_type": m_type,
                 "data": base64_data,
                 "source": {
@@ -182,16 +176,32 @@ def deserialize_to_ui_messages(langgraph_messages: list) -> list[Message]:
         if isinstance(msg, HumanMessage):
             role = "user"
             if hasattr(msg, "content") and msg.content:
-                # Handle simple string content
                 if isinstance(msg.content, str):
                     parts.append(TextMessagePart(text=msg.content))
-                # Handle structured content (list)
+                # Process file parts first, then text parts to match AI SDK streaming order
                 elif isinstance(msg.content, list):
+                    text_parts = []
+                    file_parts = []
                     for content_item in msg.content:
                         if isinstance(content_item, str):
-                            parts.append(TextMessagePart(text=content_item))
-                        elif isinstance(content_item, dict) and "text" in content_item:
-                            parts.append(TextMessagePart(text=content_item["text"]))
+                            text_parts.append(TextMessagePart(text=content_item))
+                        elif isinstance(content_item, dict):
+                            item_type = content_item.get("type")
+                            if item_type == "text":
+                                text_parts.append(TextMessagePart(text=content_item.get("text", "")))
+                            elif item_type == "image" or item_type == "file":
+                                file_parts.append(
+                                    FileMessagePart(
+                                        type="file",
+                                        url=content_item.get("source", {}).get("data", ""),
+                                        filename=content_item.get("filename", ""),
+                                        mediaType=content_item.get("source", {}).get("media_type", ""),
+                                    )
+                                )
+                    
+                    parts.extend(file_parts)
+                    parts.extend(text_parts)
+                                          
             i += 1
 
         elif isinstance(msg, AIMessage):
