@@ -1,4 +1,4 @@
-.PHONY: dev-stack migrate dev-backend dev-frontend dev build up down
+.PHONY: dev-stack migrate dev-backend dev-frontend dev build up down reset rebuild
 
 dev-stack:
 	docker compose -f docker-compose.dev.yml up -d --remove-orphans
@@ -16,8 +16,14 @@ dev:
 build:
 	docker compose build
 
+rebuild:
+	docker compose build --no-cache
+
 up:
 	docker compose up -d
 
 down:
 	docker compose down
+
+reset:
+	docker compose down -v --remove-orphans

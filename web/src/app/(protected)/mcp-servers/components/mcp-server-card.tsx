@@ -15,6 +15,7 @@ export interface MCPServerCardProps {
 interface OfficialMCPServerCardProps {
 	server: OfficialMCPServer;
 	onInstall?: () => void;
+	onClick?: () => void;
 }
 
 export default function MCPServerCard({ server }: MCPServerCardProps) {
@@ -57,8 +58,13 @@ export default function MCPServerCard({ server }: MCPServerCardProps) {
 export function OfficialMCPServerCard({
 	server,
 	onInstall,
+	onClick,
 }: OfficialMCPServerCardProps) {
 	const { addMcpServer } = useMcpServersStore();
+
+	// Check if this server requires credentials (non-DCR OAuth)
+	const requiresCredentials =
+		!server.supportsDcr && server.authType === "oauth2";
 
 	const handleInstall = () => {
 		api
@@ -78,6 +84,15 @@ export function OfficialMCPServerCard({
 				console.error("Failed to install MCP server");
 			});
 	};
+
+	const handleAddClick = () => {
+		if (requiresCredentials && onClick) {
+			onClick();
+		} else {
+			handleInstall();
+		}
+	};
+
 	return (
 		<Card className="border border-border/60 shadow-none rounded-md overflow-hidden group justify-center py-2">
 			<CardHeader className="gap-0 px-4">
@@ -109,7 +124,7 @@ export function OfficialMCPServerCard({
 								variant="ghost"
 								size="icon"
 								className="cursor-pointer"
-								onClick={() => handleInstall()}
+								onClick={handleAddClick}
 							>
 								<Plus className="w-4 h-4" />
 							</Button>

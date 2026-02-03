@@ -69,6 +69,7 @@ class MCPServerRead(MCPServerBase):
 
 class OfficialMCPServerRead(MCPServerRead):
     is_installed: bool = Field(default=False)
+    supports_dcr: bool | None = Field(default=None)
 
 class MCPServerAPIKeyDB(SQLModel, table=True):
     __tablename__ = "mcp_server_api_keys"

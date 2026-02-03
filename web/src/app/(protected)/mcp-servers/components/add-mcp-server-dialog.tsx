@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/select";
 import { OfficialMCPServerCard } from "./mcp-server-card";
 import { OfficialMCPServer } from "@/types/mcp-servers";
+import { ChevronLeft } from "lucide-react";
+import Image from "next/image";
 
 interface AddMCPServerDialogProps {
 	open: boolean;
@@ -36,6 +38,12 @@ export default function AddMCPServerDialog({
 	const [officialMCPServers, setOfficialMCPServers] = useState<
 		OfficialMCPServer[]
 	>([]);
+	const [selectedNonDcrServer, setSelectedNonDcrServer] =
+		useState<OfficialMCPServer | null>(null);
+	const [nonDcrCredentials, setNonDcrCredentials] = useState({
+		clientId: "",
+		clientSecret: "",
+	});
 
 	const [customForm, setCustomForm] = useState({
 		name: "",
@@ -140,8 +148,70 @@ export default function AddMCPServerDialog({
 		fetchOfficialServers();
 	}, []);
 
+	const handleOfficialServerClick = (server: OfficialMCPServer) => {
+		if (!server.supportsDcr && server.authType === "oauth2") {
+			setSelectedNonDcrServer(server);
+			setNonDcrCredentials({ clientId: "", clientSecret: "" });
+		}
+	};
+
+	const handleBackToList = () => {
+		setSelectedNonDcrServer(null);
+		setNonDcrCredentials({ clientId: "", clientSecret: "" });
+	};
+
+	const handleNonDcrValidate = async () => {
+		if (!selectedNonDcrServer) return;
+
+		const newErrors: Record<string, string> = {};
+		if (!nonDcrCredentials.clientId.trim()) {
+			newErrors.clientId = "Client ID is required.";
+		}
+		if (!nonDcrCredentials.clientSecret.trim()) {
+			newErrors.clientSecret = "Client Secret is required.";
+		}
+		setErrors(newErrors);
+		if (Object.keys(newErrors).length > 0) return;
+
+		setIsSubmitting(true);
+		try {
+			const payload: MCPServerCreate = {
+				name: selectedNonDcrServer.name,
+				url: selectedNonDcrServer.url,
+				authType: selectedNonDcrServer.authType,
+				iconUrl: selectedNonDcrServer.iconUrl,
+				description: selectedNonDcrServer.description,
+				oauthClientId: nonDcrCredentials.clientId,
+				oauthClientSecret: nonDcrCredentials.clientSecret,
+			};
+
+			const response = await api.post("/mcp-servers", payload);
+			addMcpServer(response.data);
+
+			setSelectedNonDcrServer(null);
+			setNonDcrCredentials({ clientId: "", clientSecret: "" });
+			setErrors({});
+			fetchOfficialServers();
+			onOpenChange(false);
+		} catch (error) {
+			console.error("Failed to create MCP server:", error);
+		} finally {
+			setIsSubmitting(false);
+		}
+	};
+
+	// Reset state when dialog closes
+	const handleOpenChange = (newOpen: boolean) => {
+		if (!newOpen) {
+			setSelectedNonDcrServer(null);
+			setNonDcrCredentials({ clientId: "", clientSecret: "" });
+			setErrors({});
+		}
+		onOpenChange(newOpen);
+	};
+
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
+		<Dialog open={open} onOpenChange={handleOpenChange}>
 			<DialogContent
 				className="sm:max-w-[600px] min-h-[600px] max-h-[800px]"
 				showCloseButton={false}
@@ -158,19 +228,109 @@ export default function AddMCPServerDialog({
 						</TabsList>
 
 						<TabsContent value="directory" className="space-y-4">
-							<div className="py-8 text-muted-foreground">
-								<div className="grid grid-cols-2 gap-x-2.5 gap-y-2 mx-0">
-									{officialMCPServers.map((server) => (
-										<OfficialMCPServerCard
-											key={server.name}
-											server={server}
-											onInstall={() => {
-												fetchOfficialServers();
-											}}
+							{selectedNonDcrServer ? (
+								<div className="py-6">
+									<div className="flex items-center gap-3 mb-6">
+										<Button
+											variant="ghost"
+											size="icon"
+											onClick={handleBackToList}
+											className="shrink-0"
+										>
+											<ChevronLeft className="w-4 h-4" />
+										</Button>
+										<Image
+											src={
+												selectedNonDcrServer.iconUrl ??
+												"https://storage.googleapis.com/choose-assets/mcp.png"
+											}
+											alt={selectedNonDcrServer.name}
+											width={32}
+											height={32}
+											className="shrink-0 rounded-md"
 										/>
-									))}
+										<h3 className="font-medium text-lg">
+											{selectedNonDcrServer.name}
+										</h3>
+									</div>
+
+									<div className="space-y-4">
+										<p className="text-sm text-muted-foreground">
+											This MCP server requires OAuth credentials. Please enter
+											your Client ID and Client Secret to continue.
+										</p>
+
+										<div className="space-y-2">
+											<Label htmlFor="nonDcrClientId">Client ID</Label>
+											<Input
+												id="nonDcrClientId"
+												placeholder="Enter your OAuth client ID"
+												value={nonDcrCredentials.clientId}
+												onChange={(e) =>
+													setNonDcrCredentials((prev) => ({
+														...prev,
+														clientId: e.target.value,
+													}))
+												}
+												className={errors.clientId ? "border-red-500" : ""}
+												aria-invalid={!!errors.clientId}
+											/>
+											{errors.clientId && (
+												<p className="text-sm text-red-600">
+													{errors.clientId}
+												</p>
+											)}
+										</div>
+
+										<div className="space-y-2">
+											<Label htmlFor="nonDcrClientSecret">Client Secret</Label>
+											<Input
+												id="nonDcrClientSecret"
+												type="password"
+												placeholder="Enter your OAuth client secret"
+												value={nonDcrCredentials.clientSecret}
+												onChange={(e) =>
+													setNonDcrCredentials((prev) => ({
+														...prev,
+														clientSecret: e.target.value,
+													}))
+												}
+												className={errors.clientSecret ? "border-red-500" : ""}
+												aria-invalid={!!errors.clientSecret}
+											/>
+											{errors.clientSecret && (
+												<p className="text-sm text-red-600">
+													{errors.clientSecret}
+												</p>
+											)}
+										</div>
+
+										<div className="flex justify-end pt-4">
+											<Button
+												onClick={handleNonDcrValidate}
+												disabled={isSubmitting}
+											>
+												{isSubmitting ? "Validating..." : "Validate"}
+											</Button>
+										</div>
+									</div>
 								</div>
-							</div>
+							) : (
+								<div className="py-8 text-muted-foreground">
+									<div className="grid grid-cols-2 gap-x-2.5 gap-y-2 mx-0">
+										{officialMCPServers.map((server) => (
+											<OfficialMCPServerCard
+												key={server.name}
+												server={server}
+												onInstall={() => {
+													fetchOfficialServers();
+												}}
+												onClick={() => handleOfficialServerClick(server)}
+											/>
+										))}
+									</div>
+								</div>
+							)}
 						</TabsContent>
 
 						<TabsContent value="custom" className="space-y-4">

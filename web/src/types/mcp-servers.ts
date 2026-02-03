@@ -33,4 +33,5 @@ export interface MCPServerUpdate {
 
 export interface OfficialMCPServer extends MCPServer {
 	isInstalled: boolean;
+	supportsDcr: boolean | null;
 }
