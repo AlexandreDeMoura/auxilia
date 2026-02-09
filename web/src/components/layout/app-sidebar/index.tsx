@@ -238,11 +238,9 @@ export function AppSidebar() {
 										<LogOut className="mr-2 h-4 w-4" />
 										Log out
 									</DropdownMenuItem>
+									<ThemeToggle />
 								</DropdownMenuContent>
 							</DropdownMenu>
-							<SidebarMenuAction asChild className="top-1/2 -translate-y-1/2">
-								<ThemeToggle />
-							</SidebarMenuAction>
 						</SidebarMenuItem>
 					</SidebarMenu>
 				</SidebarFooter>
