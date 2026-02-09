@@ -175,7 +175,7 @@ export const ModelSelectorLogo = ({
 	<Image
 		{...props}
 		alt={`${provider} logo`}
-		className={cn("size-3", className)}
+		className={cn("size-3", provider === "openai" && "dark:invert", className)}
 		height={12}
 		// src={`https://models.dev/logos/${provider}.svg`}
 		src={`https://storage.googleapis.com/choose-assets/${provider}.png`}
