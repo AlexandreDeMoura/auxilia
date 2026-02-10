@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -76,8 +77,17 @@ export default function AuthPage() {
 
 	return (
 		<Card className="w-full max-w-md">
-			<CardHeader className="text-center">
-				<CardTitle className="text-2xl">auxilia</CardTitle>
+			<CardHeader className="text-center flex flex-col items-center">
+				<CardTitle className="text-2xl flex flex-col items-center justify-center">
+					<Image
+						src="https://storage.googleapis.com/choose-assets/logo.png"
+						alt="auxilia"
+						width={48}
+						height={48}
+						className="mb-2"
+					/>
+					<span className="text-2xl">auxilia</span>
+				</CardTitle>
 			</CardHeader>
 			<form onSubmit={handleSubmit}>
 				<CardContent className="space-y-4">
