@@ -27,9 +27,9 @@ from app.models.message import Message
 from app.threads.models import ThreadDB
 from app.model_providers.settings import model_provider_settings
 from app.database import get_psycopg_conn_string
-from app.settings import app_settings
 from app.agents.settings import agent_settings
 from app.mcp.client.factory import MCPClientConfigFactory
+from app.integrations.langfuse.callback import langfuse_callback_handler
 
 
 class ModelProvider(BaseModel):
@@ -118,6 +118,16 @@ class AgentRuntime:
         self.tools = None
         self.db = db
         self._deps = deps
+        self.callbacks = [
+            langfuse_callback_handler] if langfuse_callback_handler is not None else []
+
+    @property
+    def metadata(self) -> dict:
+        return {
+            "user_id": self.thread.user_id,
+            "thread_id": self.thread.id,
+            "agent_id": self.thread.agent_id,
+        }
 
     async def build_multi_mcp_server_configs(self, mcp_server_configs: list[dict]) -> dict:
 
@@ -261,7 +271,9 @@ class AgentRuntime:
                     version="v2",
                     config={
                         "configurable": {"thread_id": self.thread.id},
-                        "recursion_limit": agent_settings.recursion_limit
+                        "recursion_limit": agent_settings.recursion_limit,
+                        "callbacks": self.callbacks,
+                        "metadata": self.metadata
                     },
                 )
             else:
@@ -269,7 +281,10 @@ class AgentRuntime:
                     {"messages": langchain_messages},
                     version="v2",
                     config={
-                        "configurable": {"thread_id": self.thread.id}, "recursion_limit": agent_settings.recursion_limit
+                        "configurable": {"thread_id": self.thread.id},
+                        "recursion_limit": agent_settings.recursion_limit,
+                        "callbacks": self.callbacks,
+                        "metadata": self.metadata
                     },
                 )
 
