@@ -3,9 +3,6 @@
 
 @source "../node_modules/streamdown/dist/*.js";
 
-@import "tailwindcss/preflight";
-@import "tailwindcss/utilities";
-
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
