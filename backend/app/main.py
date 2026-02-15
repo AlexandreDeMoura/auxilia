@@ -1,3 +1,5 @@
+from app.mcp.router import auxilia_mcp
+from app.integrations.slack.router import router as slack_router
 import os
 from builtins import ExceptionGroup
 from contextlib import asynccontextmanager
@@ -16,7 +18,7 @@ from app.mcp.servers.router import router as mcp_servers_router
 from app.model_providers.router import router as model_providers_router
 from app.threads.router import router as threads_router
 from app.users.router import router as users_router
-from app.mcp.router import auxilia_mcp
+from app.integrations.slack.router import router as slack_router
 
 # Redis configuration from environment variables
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
@@ -92,5 +94,6 @@ app.include_router(mcp_servers_router)
 app.include_router(threads_router)
 app.include_router(users_router)
 app.include_router(model_providers_router)
+app.include_router(slack_router)
 
 app.mount("/", auxilia_mcp.streamable_http_app())
