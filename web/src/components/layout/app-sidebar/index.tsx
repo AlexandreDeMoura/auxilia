@@ -12,6 +12,7 @@ import {
 	MoreVertical,
 	Trash2,
 	LogOut,
+	BookOpen,
 } from "lucide-react";
 import {
 	Sidebar,
@@ -37,7 +38,7 @@ import { useThreadsStore } from "@/stores/threads-store";
 import { useUserStore } from "@/stores/user-store";
 import { useAgentsStore } from "@/stores/agents-store";
 import { api } from "@/lib/api/client";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { ThemeToggle } from "./theme-toggle";
 
 const navItems = [
 	{
@@ -244,13 +245,22 @@ export function AppSidebar() {
 									sideOffset={4}
 								>
 									<DropdownMenuItem
+										onClick={() =>
+											window.open("https://auxilia-docs.vercel.app/", "_blank")
+										}
+										className="cursor-pointer"
+									>
+										<BookOpen className="mr-2 h-4 w-4" />
+										Documentation
+									</DropdownMenuItem>
+									<ThemeToggle />
+									<DropdownMenuItem
 										onClick={handleLogout}
 										className="cursor-pointer"
 									>
 										<LogOut className="mr-2 h-4 w-4" />
 										Log out
 									</DropdownMenuItem>
-									<ThemeToggle />
 								</DropdownMenuContent>
 							</DropdownMenu>
 						</SidebarMenuItem>
