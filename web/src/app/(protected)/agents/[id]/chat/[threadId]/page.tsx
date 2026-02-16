@@ -63,7 +63,6 @@ import { useMcpServersStore } from "@/stores/mcp-servers-store";
 import { usePendingMessageStore } from "@/stores/pending-message-store";
 import { useAgentReadiness } from "@/hooks/use-agent-readiness";
 import { useMcpAppTools } from "@/hooks/use-mcp-app-tools";
-import { HostToolWidget } from "../components/host-tool-widgets";
 import { McpAppWidget } from "../components/mcp-app-widget";
 
 const getToolMetadata = (toolType: string, knownServerNames: string[]) => {
@@ -429,19 +428,13 @@ const ChatPage = () => {
 																		)}
 																	</ToolContent>
 																</Tool>
-																{appToolInfo ? (
+																{appToolInfo &&
 																	<McpAppWidget
 																		toolPart={toolPart}
 																		toolName={toolName}
 																		appToolInfo={appToolInfo}
 																	/>
-																) : (
-																	<HostToolWidget
-																		toolPart={toolPart}
-																		toolName={toolName}
-																		serverName={serverName}
-																	/>
-																)}
+																}
 															</Fragment>
 														);
 													}
