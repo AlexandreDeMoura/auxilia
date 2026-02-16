@@ -5,6 +5,7 @@ import type { ToolUIPart } from "ai";
 import { api } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 import type { McpAppToolInfo } from "@/hooks/use-mcp-app-tools";
+import { useMcpHostContext } from "@/hooks/use-mcp-host-context";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 type McpAppWidgetProps = {
@@ -62,6 +63,8 @@ export const McpAppWidget = ({
 	appToolInfo,
 	className,
 }: McpAppWidgetProps) => {
+	const hostContext = useMcpHostContext();
+
 	if (typeof window === "undefined") {
 		return null;
 	}
@@ -74,6 +77,7 @@ export const McpAppWidget = ({
 				sandbox={{ url: new URL("/sandbox.html", window.location.origin) }}
 				toolInput={toToolInput(toolPart.input)}
 				toolResult={toCallToolResult(toolPart)}
+				hostContext={hostContext}
 				onReadResource={async ({ uri }) => {
 					const response = await api.post(
 						`/mcp-servers/${appToolInfo.serverId}/app/read-resource`,
