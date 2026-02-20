@@ -21,6 +21,7 @@ async def read_agents(
         .outerjoin(
             AgentMCPServerBindingDB, AgentDB.id == AgentMCPServerBindingDB.agent_id
         )
+        .where(AgentDB.is_archived == False)
         .order_by(AgentDB.created_at.asc())
     )
     if owner_id:

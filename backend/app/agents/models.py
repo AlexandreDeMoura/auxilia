@@ -75,6 +75,7 @@ class AgentBase(SQLModel):
     instructions: str = Field(sa_column=Column(Text, nullable=False))
     owner_id: UUID = Field(foreign_key="users.id", nullable=False)
     emoji: str | None = Field(default=None, max_length=10, nullable=True)
+    is_archived: bool = Field(default=False, nullable=False)
 
 
 class AgentDB(AgentBase, table=True):
@@ -117,6 +118,7 @@ class AgentRead(SQLModel):
     instructions: str
     owner_id: UUID
     emoji: str | None
+    is_archived: bool
     created_at: datetime
     updated_at: datetime
     mcp_servers: list[AgentMCPServer] | None = None
