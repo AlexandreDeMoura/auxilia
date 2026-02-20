@@ -108,11 +108,12 @@ export default function MCPServerDialog({
 		setErrors({});
 	}, [open, isEditMode, server]);
 
-	// Filter official servers by search query
+	// Filter official servers: exclude installed, then apply search query
 	const filteredServers = useMemo(() => {
-		if (!searchQuery.trim()) return officialServers;
+		const available = officialServers.filter((s) => !s.isInstalled);
+		if (!searchQuery.trim()) return available;
 		const q = searchQuery.toLowerCase();
-		return officialServers.filter((s) => s.name.toLowerCase().includes(q));
+		return available.filter((s) => s.name.toLowerCase().includes(q));
 	}, [officialServers, searchQuery]);
 
 	// Whether the selected official server requires non-DCR credentials
@@ -397,7 +398,7 @@ export default function MCPServerDialog({
 					)}
 
 					{/* ── Shared Form ── */}
-					<div className="space-y-5">
+					<div className="space-y-5 mb-4">
 						<div className="space-y-1.5">
 							<Label htmlFor="name" className="text-[13px] font-semibold">
 								Name
