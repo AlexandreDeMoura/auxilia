@@ -6,11 +6,16 @@ export interface AgentMCPServer extends MCPServer {
 	tools: Record<string, ToolStatus> | null;
 }
 
+export type AgentPermission = "owner" | "admin" | "editor" | "user";
+
 export interface Agent {
 	id: string;
 	name: string;
 	instructions: string;
+	ownerId: string;
 	emoji?: string | null;
 	isArchived: boolean;
+	description?: string | null;
 	mcpServers: AgentMCPServer[];
+	currentUserPermission?: AgentPermission | null;
 }

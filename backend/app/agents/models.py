@@ -4,7 +4,14 @@ from enum import Enum
 from pydantic import BaseModel
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
-from sqlmodel import Column, DateTime, Field, SQLModel, Text
+from sqlalchemy import UniqueConstraint
+from sqlmodel import Column, DateTime, Field, SQLModel, Text, String
+
+
+class PermissionLevel(str, Enum):
+    user = "user"
+    editor = "editor"
+    admin = "admin"
 
 
 class ToolStatus(str, Enum):
@@ -25,7 +32,6 @@ class AgentConfig(BaseModel):
     mcp_servers: list[AgentMCPServer]
 
 
-# Agent MCP Server Binding Models (Database)
 class AgentMCPServerBindingBase(SQLModel):
     agent_id: UUID = Field(foreign_key="agents.id", nullable=False)
     mcp_server_id: UUID = Field(foreign_key="mcp_servers.id", nullable=False)
@@ -76,6 +82,8 @@ class AgentBase(SQLModel):
     owner_id: UUID = Field(foreign_key="users.id", nullable=False)
     emoji: str | None = Field(default=None, max_length=10, nullable=True)
     is_archived: bool = Field(default=False, nullable=False)
+    description: str | None = Field(
+        default=None, max_length=255, sa_column=Column(String(255), nullable=True))
 
 
 class AgentDB(AgentBase, table=True):
@@ -110,6 +118,45 @@ class AgentUpdate(SQLModel):
     name: str | None = Field(default=None, max_length=255)
     instructions: str | None = None
     emoji: str | None = None
+    description: str | None = None
+
+
+class AgentUserPermissionDB(SQLModel, table=True):
+    __tablename__ = "agent_user_permissions"
+    __table_args__ = (
+        UniqueConstraint("agent_id", "user_id",
+                         name="uq_agent_user_permission"),
+    )
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    agent_id: UUID = Field(foreign_key="agents.id", nullable=False)
+    user_id: UUID = Field(foreign_key="users.id", nullable=False)
+    permission: PermissionLevel = Field(nullable=False)
+    created_at: datetime = Field(
+        default=None,
+        sa_column=Column(
+            DateTime(timezone=True), server_default=func.now(), nullable=False
+        ),
+    )
+    updated_at: datetime = Field(
+        default=None,
+        sa_column=Column(
+            DateTime(timezone=True),
+            server_default=func.now(),
+            onupdate=func.now(),
+            nullable=False,
+        ),
+    )
+
+
+class AgentPermissionRead(SQLModel):
+    user_id: UUID
+    permission: PermissionLevel
+
+
+class AgentPermissionWrite(SQLModel):
+    user_id: UUID
+    permission: PermissionLevel
 
 
 class AgentRead(SQLModel):
@@ -119,6 +166,8 @@ class AgentRead(SQLModel):
     owner_id: UUID
     emoji: str | None
     is_archived: bool
+    description: str | None
     created_at: datetime
     updated_at: datetime
     mcp_servers: list[AgentMCPServer] | None = None
+    current_user_permission: str | None = None
