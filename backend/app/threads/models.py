@@ -9,6 +9,8 @@ class ThreadBase(SQLModel):
     user_id: UUID = Field(foreign_key="users.id", nullable=False)
     agent_id: UUID = Field(foreign_key="agents.id", nullable=False)
     model_id: str | None = Field(default=None, nullable=True)
+    thinking_enabled: bool | None = Field(default=None, nullable=True)
+    thinking_effort: str | None = Field(default=None, nullable=True)
     first_message_content: str | None = Field(
         default=None, sa_column=Column(Text, nullable=True)
     )

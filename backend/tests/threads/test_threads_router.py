@@ -15,6 +15,8 @@ def test_create_thread(client: TestClient, mock_db, current_user):
     thread_data = {
         "user_id": str(user_id),
         "agent_id": str(agent_id),
+        "thinking_enabled": True,
+        "thinking_effort": "medium",
         "first_message_content": "Hello, this is the first message",
     }
 
@@ -32,6 +34,8 @@ def test_create_thread(client: TestClient, mock_db, current_user):
     data = response.json()
     assert data["user_id"] == thread_data["user_id"]
     assert data["agent_id"] == thread_data["agent_id"]
+    assert data["thinking_enabled"] is True
+    assert data["thinking_effort"] == "medium"
     assert data["first_message_content"] == thread_data["first_message_content"]
     assert "id" in data
     assert "created_at" in data
@@ -61,6 +65,8 @@ def test_create_thread_without_first_message(client: TestClient, mock_db, curren
     data = response.json()
     assert data["user_id"] == thread_data["user_id"]
     assert data["agent_id"] == thread_data["agent_id"]
+    assert data["thinking_enabled"] is None
+    assert data["thinking_effort"] is None
     assert data["first_message_content"] is None
 
 

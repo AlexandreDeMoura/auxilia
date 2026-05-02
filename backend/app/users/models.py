@@ -17,6 +17,7 @@ class UserBase(SQLModel):
     email: str | None = Field(default=None, max_length=255, unique=True, index=True)
     hashed_password: str | None = Field(default=None)
     role: WorkspaceRole = Field(default=WorkspaceRole.member, nullable=False)
+    thinking_controls_enabled: bool = Field(default=False, nullable=False)
 
 
 class UserDB(UserBase, BaseDBModel, table=True):

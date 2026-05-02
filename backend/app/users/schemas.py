@@ -11,12 +11,14 @@ class UserCreate(SQLModel):
     email: str | None = Field(default=None, max_length=255)
     hashed_password: str | None = None
     role: WorkspaceRole = WorkspaceRole.member
+    thinking_controls_enabled: bool = False
 
 
 class UserPatch(SQLModel):
     name: str | None = Field(default=None, max_length=255)
     email: str | None = Field(default=None, max_length=255)
     hashed_password: str | None = None
+    thinking_controls_enabled: bool | None = None
 
 
 class UserRolePatch(SQLModel):
@@ -28,6 +30,7 @@ class UserResponse(SQLModel):
     name: str | None
     email: str | None
     role: WorkspaceRole
+    thinking_controls_enabled: bool
     created_at: datetime
     updated_at: datetime
 

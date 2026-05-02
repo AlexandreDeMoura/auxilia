@@ -34,6 +34,7 @@ def test_create_user(client: TestClient, mock_db, admin_user):
     assert data["name"] == user_data["name"]
     assert data["email"] == user_data["email"]
     assert data["role"] == user_data["role"]
+    assert data["thinking_controls_enabled"] is False
     assert "id" in data
     assert "created_at" in data
     assert "updated_at" in data
@@ -59,7 +60,7 @@ def test_create_user_duplicate_email(client: TestClient, mock_db, admin_user):
     mock_db.execute.return_value = mock_result
 
     response = client.post("/users/", json=user_data)
-    assert response.status_code == 400
+    assert response.status_code == 409
     assert response.json()["detail"] == "Email already registered"
 
 
@@ -115,6 +116,7 @@ def test_get_user(client: TestClient, mock_db):
     data = response.json()
     assert data["id"] == str(user_id)
     assert data["email"] == user.email
+    assert data["thinking_controls_enabled"] is False
 
 
 def test_get_user_not_found(client: TestClient, mock_db):
@@ -181,6 +183,7 @@ def test_update_user(client: TestClient, mock_db):
 
     update_data = {
         "name": "Updated Name",
+        "thinking_controls_enabled": True,
     }
 
     response = client.patch(f"/users/{user_id}", json=update_data)
@@ -188,6 +191,7 @@ def test_update_user(client: TestClient, mock_db):
     data = response.json()
     assert data["id"] == str(user_id)
     assert data["name"] == update_data["name"]
+    assert data["thinking_controls_enabled"] is True
 
 
 def test_update_user_role(client: TestClient, mock_db, admin_user):
@@ -256,7 +260,7 @@ def test_update_user_duplicate_email(client: TestClient, mock_db):
 
     update_data = {"email": "user1@example.com"}
     response = client.patch(f"/users/{user_id}", json=update_data)
-    assert response.status_code == 400
+    assert response.status_code == 409
     assert response.json()["detail"] == "Email already registered"
 
 

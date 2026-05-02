@@ -10,6 +10,8 @@ class ThreadCreate(SQLModel):
     id: str | None = None
     agent_id: UUID
     model_id: str | None = None
+    thinking_enabled: bool | None = None
+    thinking_effort: str | None = None
     first_message_content: str | None = None
 
 
