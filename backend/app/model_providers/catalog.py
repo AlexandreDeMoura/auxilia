@@ -1,3 +1,5 @@
+from typing import Any
+
 from langchain_anthropic import ChatAnthropic
 from langchain_deepseek import ChatDeepSeek
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -20,6 +22,21 @@ class Model(BaseModel):
     chef_slug: str
     supports_thinking: bool
     supports_thinking_effort: bool
+
+
+ANTHROPIC_LEGACY_THINKING = {"type": "enabled", "budget_tokens": 1024}
+ANTHROPIC_THINKING_BY_EFFORT: dict[str, dict[str, Any]] = {
+    "low": {"type": "enabled", "budget_tokens": 512},
+    "medium": {"type": "enabled", "budget_tokens": 1024},
+    "high": {"type": "enabled", "budget_tokens": 4096},
+}
+
+GOOGLE_LEGACY_THINKING_BUDGET = -1
+GOOGLE_THINKING_BUDGET_BY_EFFORT: dict[str, int] = {
+    "low": 2048,
+    "medium": 8192,
+    "high": -1,
+}
 
 
 LLM_PROVIDERS: list[ModelProvider] = []
@@ -134,24 +151,40 @@ if model_provider_settings.google_api_key:
 
 class ChatModelFactory:
 
-    def create(self, provider: str, model_id: str, api_key: str):
+    def create(self, provider: str, model_id: str, api_key: str, effort: str | None = None):
         match provider:
             case "openai":
                 return ChatOpenAI(model=model_id, api_key=api_key)
             case "deepseek":
-                return ChatDeepSeek(model=model_id, api_key=api_key, extra_body={"thinking": {"type": "disabled"}})
+                return ChatDeepSeek(
+                    model=model_id,
+                    api_key=api_key,
+                    extra_body=self._resolve_deepseek_thinking(effort),
+                )
             case "anthropic":
+                thinking = self._resolve_anthropic_thinking(effort)
+                if thinking is None:
+                    return ChatAnthropic(
+                        model=model_id,
+                        temperature=1,
+                        max_tokens=2048,
+                        streaming=True,
+                        timeout=None,
+                        max_retries=2,
+                        api_key=api_key,
+                    )
                 return ChatAnthropic(
                     model=model_id,
                     temperature=1,
                     max_tokens=2048,
                     streaming=True,
                     timeout=None,
-                    thinking={"type": "enabled", "budget_tokens": 1024},
+                    thinking=thinking,
                     max_retries=2,
                     api_key=api_key,
                 )
             case "google":
+                include_thoughts, thinking_budget = self._resolve_google_thinking(effort)
                 return ChatGoogleGenerativeAI(
                     model=model_id,
                     temperature=0,
@@ -159,9 +192,32 @@ class ChatModelFactory:
                     timeout=None,
                     max_retries=2,
                     streaming=True,
-                    include_thoughts=True,
-                    thinking_budget=-1,
+                    include_thoughts=include_thoughts,
+                    thinking_budget=thinking_budget,
                     api_key=api_key,
                 )
             case _:
                 raise ValueError(f"Provider {provider} not supported")
+
+    def _resolve_deepseek_thinking(self, effort: str | None) -> dict[str, dict[str, str]]:
+        if effort in {"on", "low", "medium", "high"}:
+            return {"thinking": {"type": "enabled"}}
+        return {"thinking": {"type": "disabled"}}
+
+    def _resolve_anthropic_thinking(self, effort: str | None) -> dict[str, Any] | None:
+        if effort is None:
+            return ANTHROPIC_LEGACY_THINKING
+        if effort == "off":
+            return None
+        if effort == "on":
+            return ANTHROPIC_THINKING_BY_EFFORT["medium"]
+        return ANTHROPIC_THINKING_BY_EFFORT.get(effort, ANTHROPIC_THINKING_BY_EFFORT["medium"])
+
+    def _resolve_google_thinking(self, effort: str | None) -> tuple[bool, int]:
+        if effort is None:
+            return True, GOOGLE_LEGACY_THINKING_BUDGET
+        if effort == "off":
+            return False, 0
+        if effort == "on":
+            return True, GOOGLE_THINKING_BUDGET_BY_EFFORT["medium"]
+        return True, GOOGLE_THINKING_BUDGET_BY_EFFORT.get(effort, GOOGLE_THINKING_BUDGET_BY_EFFORT["medium"])

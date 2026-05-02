@@ -1,5 +1,6 @@
 import logging
 from dataclasses import dataclass
+from typing import Literal
 
 from deepagents import create_deep_agent
 from deepagents.backends import StateBackend
@@ -31,9 +32,11 @@ from app.integrations.langfuse.callback import langfuse_callback_handler
 from app.model_providers.catalog import LLM_PROVIDERS, MODELS, ChatModelFactory
 from app.sandbox.settings import sandbox_settings
 from app.threads.models import ThreadDB
+from app.users.models import UserDB
 
 
 logger = logging.getLogger(__name__)
+THINKING_EFFORT_LEVELS = {"low", "medium", "high"}
 
 
 async def get_regeneration_checkpoint_id(agent, config: dict) -> str | None:
@@ -49,6 +52,47 @@ async def get_regeneration_checkpoint_id(agent, config: dict) -> str | None:
             return state.config["configurable"]["checkpoint_id"]
 
     return None
+
+
+def _resolve_thread_thinking_mode(
+    thread: ThreadDB,
+    *,
+    supports_thinking: bool,
+    supports_thinking_effort: bool,
+) -> str | None:
+    if not supports_thinking:
+        return "off"
+
+    if supports_thinking_effort:
+        if thread.thinking_enabled is False:
+            return "off"
+        if thread.thinking_enabled is True:
+            if thread.thinking_effort in THINKING_EFFORT_LEVELS:
+                return thread.thinking_effort
+            return "medium"
+        return "medium"
+
+    if thread.thinking_enabled is False:
+        return "off"
+    return "on"
+
+
+async def _resolve_web_thinking_mode(
+    db: AsyncSession,
+    thread: ThreadDB,
+    *,
+    supports_thinking: bool,
+    supports_thinking_effort: bool,
+) -> str | None:
+    user = await db.get(UserDB, thread.user_id)
+    if user is None or not user.thinking_controls_enabled:
+        return None
+
+    return _resolve_thread_thinking_mode(
+        thread,
+        supports_thinking=supports_thinking,
+        supports_thinking_effort=supports_thinking_effort,
+    )
 
 
 @dataclass
@@ -82,9 +126,7 @@ class Agent:
                 model=model,
                 tools=self.toolset.all,
                 system_prompt=SystemMessage(
-                    content=[
-                        {"type": "text", "text": self.config.instructions or ""}
-                    ]
+                    content=[{"type": "text", "text": self.config.instructions or ""}]
                 ),
             ),
         )
@@ -127,26 +169,40 @@ class AgentRuntime:
         cls,
         thread: ThreadDB,
         db: AsyncSession,
+        invocation_source: Literal["web", "slack"] = "web",
     ) -> "AgentRuntime":
         user_id = str(thread.user_id)
 
         agent = await Agent.resolve(thread.agent_id, db, user_id, is_parent=True)
 
         model_entry = next(m for m in MODELS if m.name == thread.model_id)
-        provider = next(p for p in LLM_PROVIDERS if p.name ==
-                        model_entry.provider)
+        provider = next(p for p in LLM_PROVIDERS if p.name == model_entry.provider)
+
+        model_effort = None
+        if invocation_source == "web":
+            model_effort = await _resolve_web_thinking_mode(
+                db,
+                thread,
+                supports_thinking=model_entry.supports_thinking,
+                supports_thinking_effort=model_entry.supports_thinking_effort,
+            )
+
         model = ChatModelFactory().create(
-            provider.name, thread.model_id, provider.api_key
+            provider.name,
+            thread.model_id,
+            provider.api_key,
+            effort=model_effort,
         )
 
         # Build middleware stack
         middleware = [
-            ToolCallLimitMiddleware(run_limit=(
-                agent_settings.recursion_limit - 1) // 2, exit_behavior="end"),
+            ToolCallLimitMiddleware(
+                run_limit=(agent_settings.recursion_limit - 1) // 2, exit_behavior="end"
+            ),
             HumanInTheLoopMiddleware(
                 interrupt_on=agent.toolset.interrupt_on,
                 description_prefix="Tool execution pending approval",
-            )
+            ),
         ]
 
         subagents = []
@@ -188,9 +244,7 @@ class AgentRuntime:
         """Resolve raw input/command dicts into the value to pass to the agent."""
         if command is not None:
             return Command(resume=command.get("resume"))
-        lc_messages = _dicts_to_lc_messages(
-            input.get("messages", []) if input else []
-        )
+        lc_messages = _dicts_to_lc_messages(input.get("messages", []) if input else [])
         return {"messages": lc_messages}
 
     async def _resolve_config(

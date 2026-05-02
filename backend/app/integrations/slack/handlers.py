@@ -233,7 +233,7 @@ async def stream_agent_response(
     )
     thread_ts = event.thread_ts or event.ts
 
-    agent_runtime = await AgentRuntime.build(thread=thread, db=db)
+    agent_runtime = await AgentRuntime.build(thread=thread, db=db, invocation_source="slack")
 
     approval_requests = await _stream_and_collect_approvals(
         agent_runtime, streamer,
@@ -503,7 +503,7 @@ async def _resume_agent(
             channel_id=channel_id, thread_ts=thread_ts, status="is typing...",
         )
 
-        agent_runtime = await AgentRuntime.build(thread=thread, db=db)
+        agent_runtime = await AgentRuntime.build(thread=thread, db=db, invocation_source="slack")
 
         streamer = await client.chat_stream(
             channel=channel_id,
