@@ -15,6 +15,11 @@ class ModelProvider(BaseModel):
 class Model(BaseModel):
     name: str
     provider: str
+    display_name: str
+    chef: str
+    chef_slug: str
+    supports_thinking: bool
+    supports_thinking_effort: bool
 
 
 LLM_PROVIDERS: list[ModelProvider] = []
@@ -23,28 +28,108 @@ MODELS: list[Model] = []
 if model_provider_settings.openai_api_key:
     LLM_PROVIDERS.append(ModelProvider(
         name="openai", api_key=model_provider_settings.openai_api_key))
-    MODELS.append(Model(name="gpt-4o-mini", provider="openai"))
+    MODELS.append(Model(
+        name="gpt-4o-mini",
+        provider="openai",
+        display_name="GPT-4o mini",
+        chef="OpenAI",
+        chef_slug="openai",
+        supports_thinking=False,
+        supports_thinking_effort=False,
+    ))
 
 if model_provider_settings.deepseek_api_key:
     LLM_PROVIDERS.append(ModelProvider(
         name="deepseek", api_key=model_provider_settings.deepseek_api_key))
-    MODELS.append(Model(name="deepseek-v4-flash", provider="deepseek"))
-    MODELS.append(Model(name="deepseek-v4-pro", provider="deepseek"))
-    MODELS.append(Model(name="deepseek-chat", provider="deepseek"))
-    MODELS.append(Model(name="deepseek-reasoner", provider="deepseek"))
+    MODELS.append(Model(
+        name="deepseek-v4-flash",
+        provider="deepseek",
+        display_name="DeepSeek v4 Flash",
+        chef="DeepSeek",
+        chef_slug="deepseek",
+        supports_thinking=False,
+        supports_thinking_effort=False,
+    ))
+    MODELS.append(Model(
+        name="deepseek-v4-pro",
+        provider="deepseek",
+        display_name="DeepSeek v4 Pro",
+        chef="DeepSeek",
+        chef_slug="deepseek",
+        supports_thinking=False,
+        supports_thinking_effort=False,
+    ))
+    MODELS.append(Model(
+        name="deepseek-chat",
+        provider="deepseek",
+        display_name="DeepSeek Chat",
+        chef="DeepSeek",
+        chef_slug="deepseek",
+        supports_thinking=False,
+        supports_thinking_effort=False,
+    ))
+    MODELS.append(Model(
+        name="deepseek-reasoner",
+        provider="deepseek",
+        display_name="DeepSeek Reasoner",
+        chef="DeepSeek",
+        chef_slug="deepseek",
+        supports_thinking=True,
+        supports_thinking_effort=False,
+    ))
 
 if model_provider_settings.anthropic_api_key:
     LLM_PROVIDERS.append(ModelProvider(
         name="anthropic", api_key=model_provider_settings.anthropic_api_key))
-    MODELS.append(Model(name="claude-haiku-4-5", provider="anthropic"))
-    MODELS.append(Model(name="claude-sonnet-4-6", provider="anthropic"))
-    MODELS.append(Model(name="claude-opus-4-6", provider="anthropic"))
+    MODELS.append(Model(
+        name="claude-haiku-4-5",
+        provider="anthropic",
+        display_name="Claude Haiku 4.5",
+        chef="Anthropic",
+        chef_slug="anthropic",
+        supports_thinking=True,
+        supports_thinking_effort=True,
+    ))
+    MODELS.append(Model(
+        name="claude-sonnet-4-6",
+        provider="anthropic",
+        display_name="Claude Sonnet 4.6",
+        chef="Anthropic",
+        chef_slug="anthropic",
+        supports_thinking=True,
+        supports_thinking_effort=True,
+    ))
+    MODELS.append(Model(
+        name="claude-opus-4-6",
+        provider="anthropic",
+        display_name="Claude Opus 4.6",
+        chef="Anthropic",
+        chef_slug="anthropic",
+        supports_thinking=True,
+        supports_thinking_effort=True,
+    ))
 
 if model_provider_settings.google_api_key:
     LLM_PROVIDERS.append(ModelProvider(
         name="google", api_key=model_provider_settings.google_api_key))
-    MODELS.append(Model(name="gemini-3-flash-preview", provider="google"))
-    MODELS.append(Model(name="gemini-3-pro-preview", provider="google"))
+    MODELS.append(Model(
+        name="gemini-3-flash-preview",
+        provider="google",
+        display_name="Gemini 3 Flash Preview",
+        chef="Google",
+        chef_slug="google",
+        supports_thinking=True,
+        supports_thinking_effort=True,
+    ))
+    MODELS.append(Model(
+        name="gemini-3-pro-preview",
+        provider="google",
+        display_name="Gemini 3 Pro Preview",
+        chef="Google",
+        chef_slug="google",
+        supports_thinking=True,
+        supports_thinking_effort=True,
+    ))
 
 
 class ChatModelFactory:

@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.model_providers.catalog import MODELS
 from app.model_providers.models import ModelProviderType
 from app.model_providers.schemas import ModelProviderResponse, ModelResponse
 
@@ -32,36 +33,15 @@ async def get_model_providers() -> list[ModelProviderResponse]:
 @router.get("/models", response_model=list[ModelResponse])
 async def get_models() -> list[ModelResponse]:
     """List all models available."""
-    models = []
-    if model_provider_settings.openai_api_key:
-        models.extend([ModelResponse(name="GPT-4o mini", providers=[ModelProviderType.openai],
-                      id="gpt-4o-mini", chef="OpenAI", chefSlug="openai")])
-    if model_provider_settings.deepseek_api_key:
-        models.extend([
-            ModelResponse(name="DeepSeek v4 Flash", providers=[
-                ModelProviderType.deepseek], id="deepseek-v4-flash", chef="DeepSeek", chefSlug="deepseek"),
-            ModelResponse(name="DeepSeek v4 Pro", providers=[
-                ModelProviderType.deepseek], id="deepseek-v4-pro", chef="DeepSeek", chefSlug="deepseek"),
-            ModelResponse(name="DeepSeek Chat", providers=[
-                ModelProviderType.deepseek], id="deepseek-chat", chef="DeepSeek", chefSlug="deepseek"),
-            ModelResponse(name="DeepSeek Reasoner", providers=[
-                ModelProviderType.deepseek], id="deepseek-reasoner", chef="DeepSeek", chefSlug="deepseek"),
-        ])
-    if model_provider_settings.anthropic_api_key:
-        models.extend([
-            ModelResponse(name="Claude Haiku 4.5", providers=[
-                      ModelProviderType.anthropic], id="claude-haiku-4-5", chef="Anthropic", chefSlug="anthropic"),
-            ModelResponse(name="Claude Sonnet 4.6", providers=[
-                ModelProviderType.anthropic], id="claude-sonnet-4-6", chef="Anthropic", chefSlug="anthropic"),
-            ModelResponse(name="Claude Opus 4.6", providers=[
-                ModelProviderType.anthropic], id="claude-opus-4-6", chef="Anthropic", chefSlug="anthropic"),
-        ])
-    if model_provider_settings.google_api_key:
-        models.extend([
-            ModelResponse(name="Gemini 3 Flash Preview", providers=[
-                      ModelProviderType.google], id="gemini-3-flash-preview", chef="Google", chefSlug="google"),
-            ModelResponse(name="Gemini 3 Pro Preview", providers=[
-                ModelProviderType.google], id="gemini-3-pro-preview", chef="Google", chefSlug="google"),
-        ])
-
-    return list(models)
+    return [
+        ModelResponse(
+            id=model.name,
+            name=model.display_name,
+            chef=model.chef,
+            chefSlug=model.chef_slug,
+            providers=[ModelProviderType(model.provider)],
+            supports_thinking=model.supports_thinking,
+            supports_thinking_effort=model.supports_thinking_effort,
+        )
+        for model in MODELS
+    ]

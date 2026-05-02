@@ -14,3 +14,5 @@ class ModelResponse(BaseModel):
     chef: str
     chefSlug: str
     providers: list[ModelProviderType]
+    supports_thinking: bool
+    supports_thinking_effort: bool
