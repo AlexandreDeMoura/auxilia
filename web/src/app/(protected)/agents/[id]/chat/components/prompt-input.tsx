@@ -30,8 +30,10 @@ import { CheckIcon, PlugIcon } from "lucide-react";
 import { useRef, useState, useEffect, useMemo } from "react";
 import { useModelsStore } from "@/stores/models-store";
 import { Model } from "@/types/models";
+import { isThinkingEffort, ThinkingEffort } from "@/types/threads";
 import { MCPServer } from "@/types/mcp-servers";
 import { ConnectServersDialog } from "./connect-servers-dialog";
+import { Switch } from "@/components/ui/switch";
 
 interface ChatPromptInputProps {
 	onSubmit: (message: PromptInputMessage) => void;
@@ -41,10 +43,24 @@ interface ChatPromptInputProps {
 	onModelChange?: (modelId: string) => void;
 	selectedModel?: string;
 	readOnlyModel?: boolean;
+	thinkingControlsEnabled?: boolean;
+	thinkingEnabled?: boolean | null;
+	onThinkingEnabledChange?: (enabled: boolean) => void;
+	thinkingEffort?: ThinkingEffort | null;
+	onThinkingEffortChange?: (effort: ThinkingEffort) => void;
+	readOnlyThinking?: boolean;
 	agentReady?: boolean | null;
 	disconnectedServers?: MCPServer[];
 	onAllConnected?: () => void;
 }
+
+const THINKING_EFFORT_LABELS: Record<ThinkingEffort, string> = {
+	low: "Low",
+	medium: "Medium",
+	high: "High",
+};
+
+const THINKING_EFFORT_LEVELS: ThinkingEffort[] = ["low", "medium", "high"];
 
 const ChatPromptInput = ({
 	onSubmit,
@@ -54,6 +70,12 @@ const ChatPromptInput = ({
 	onModelChange,
 	selectedModel: externalSelectedModel,
 	readOnlyModel = false,
+	thinkingControlsEnabled = false,
+	thinkingEnabled,
+	onThinkingEnabledChange,
+	thinkingEffort,
+	onThinkingEffortChange,
+	readOnlyThinking = false,
 	agentReady,
 	disconnectedServers = [],
 	onAllConnected,
@@ -67,6 +89,15 @@ const ChatPromptInput = ({
 
 	const currentModel = externalSelectedModel ?? model;
 	const selectedModelData = models.find((m) => m.id === currentModel);
+	const supportsThinking = selectedModelData?.supportsThinking ?? false;
+	const supportsThinkingEffort =
+		selectedModelData?.supportsThinkingEffort ?? false;
+	const shouldShowThinkingControls = thinkingControlsEnabled && supportsThinking;
+	const resolvedThinkingEnabled = thinkingEnabled ?? true;
+	const resolvedThinkingEffort = isThinkingEffort(thinkingEffort)
+		? thinkingEffort
+		: "medium";
+	const effortControlsDisabled = readOnlyThinking || !resolvedThinkingEnabled;
 
 	const handleModelChange = (modelId: string) => {
 		setModel(modelId);
@@ -194,6 +225,56 @@ const ChatPromptInput = ({
 									</ModelSelectorList>
 								</ModelSelectorContent>
 							</ModelSelector>
+						)}
+						{shouldShowThinkingControls && (
+							<div className="flex items-center gap-2">
+								<div className="flex h-8 items-center gap-2 rounded-full border border-border bg-background px-3">
+									<span className="text-xs font-medium text-muted-foreground">
+										Thinking
+									</span>
+									<Switch
+										checked={resolvedThinkingEnabled}
+										className={cn(
+											"cursor-pointer",
+											readOnlyThinking && "cursor-not-allowed",
+										)}
+										disabled={readOnlyThinking}
+										onCheckedChange={(checked) => {
+											onThinkingEnabledChange?.(checked);
+										}}
+									/>
+								</div>
+								{supportsThinkingEffort && (
+									<div
+										className={cn(
+											"inline-flex items-center rounded-full border border-border bg-background p-0.5 transition-opacity",
+											effortControlsDisabled && "opacity-50",
+										)}
+									>
+										{THINKING_EFFORT_LEVELS.map((level) => {
+											const isActive = resolvedThinkingEffort === level;
+
+											return (
+												<button
+													key={level}
+													type="button"
+													disabled={effortControlsDisabled}
+													onClick={() => onThinkingEffortChange?.(level)}
+													className={cn(
+														"rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+														isActive
+															? "bg-primary text-primary-foreground"
+															: "text-muted-foreground hover:text-foreground",
+														effortControlsDisabled && "cursor-not-allowed",
+													)}
+												>
+													{THINKING_EFFORT_LABELS[level]}
+												</button>
+											);
+										})}
+									</div>
+								)}
+							</div>
 						)}
 					</PromptInputTools>
 					{agentReady === false ? (

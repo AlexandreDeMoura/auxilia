@@ -12,9 +12,11 @@ import { SelectAgentDialog } from "./components/select-agent-dialog";
 import { useThreadsStore } from "@/stores/threads-store";
 import { usePendingMessageStore } from "@/stores/pending-message-store";
 import { useModelsStore } from "@/stores/models-store";
+import { useUserStore } from "@/stores/user-store";
 import { api } from "@/lib/api/client";
 import { ChevronDown } from "lucide-react";
 import { Agent } from "@/types/agents";
+import { ThinkingEffort } from "@/types/threads";
 import { AgentAvatar } from "@/components/ui/agent-avatar";
 import { SageAlert } from "@/components/ui/sage-alert";
 import { getDefaultModel } from "@/lib/utils/get-default-model";
@@ -28,20 +30,26 @@ const StarterChatPage = () => {
 	const { modelSelection, starterAgent } = usePromptInputController();
 	const selectedModel = modelSelection.value;
 	const setSelectedModel = modelSelection.setModel;
+	const setStarterAgent = starterAgent.set;
 	const addThread = useThreadsStore((state) => state.addThread);
 	const setPendingMessage = usePendingMessageStore(
 		(state) => state.setPendingMessage,
 	);
 	const models = useModelsStore((state) => state.models);
 	const fetchModels = useModelsStore((state) => state.fetchModels);
+	const user = useUserStore((state) => state.user);
+	const fetchUser = useUserStore((state) => state.fetchUser);
 	const [agent, setAgent] = useState<Agent | null>(null);
 	const [isAgentDialogOpen, setIsAgentDialogOpen] = useState(false);
+	const [thinkingEnabled, setThinkingEnabled] = useState(true);
+	const [thinkingEffort, setThinkingEffort] = useState<ThinkingEffort>("medium");
 	const {
 		ready: agentReady,
 		status,
 		disconnectedMcpServers,
 		refetch: refetchReady,
 	} = useAgentReadiness(agentId);
+	const thinkingControlsEnabled = user?.thinkingControlsEnabled ?? false;
 
 	const handleSubmit = async (message: PromptInputMessage) => {
 		if (!message) return;
@@ -59,6 +67,7 @@ const StarterChatPage = () => {
 			console.error("No model available to create thread");
 			return;
 		}
+		const modelEntry = models.find((m) => m.id === modelId);
 
 		setIsCreating(true);
 
@@ -71,13 +80,28 @@ const StarterChatPage = () => {
 
 			// Extract text for display purposes (thread list preview)
 			const textContent = "text" in message ? message.text : undefined;
-
-			const response = await api.post("/threads", {
+			const threadPayload: {
+				id: string;
+				agentId: string;
+				modelId: string;
+				firstMessageContent: string | undefined;
+				thinkingEnabled?: boolean;
+				thinkingEffort?: ThinkingEffort;
+			} = {
 				id: threadId,
 				agentId: agentId,
 				modelId,
 				firstMessageContent: textContent,
-			});
+			};
+
+			if (thinkingControlsEnabled && modelEntry?.supportsThinking) {
+				threadPayload.thinkingEnabled = thinkingEnabled;
+				if (modelEntry.supportsThinkingEffort && thinkingEnabled) {
+					threadPayload.thinkingEffort = thinkingEffort;
+				}
+			}
+
+			const response = await api.post("/threads", threadPayload);
 
 			const thread = {
 				...response.data,
@@ -104,6 +128,12 @@ const StarterChatPage = () => {
 	}, [fetchModels, models.length]);
 
 	useEffect(() => {
+		fetchUser().catch((error) => {
+			console.error("Error fetching user settings:", error);
+		});
+	}, [fetchUser]);
+
+	useEffect(() => {
 		if (selectedModel) {
 			return;
 		}
@@ -119,10 +149,10 @@ const StarterChatPage = () => {
 			const response = await api.get(`/agents/${agentId}`);
 			const agent = response.data;
 			setAgent(agent);
-			starterAgent.set({ name: agent.name, emoji: agent.emoji });
+			setStarterAgent({ name: agent.name, emoji: agent.emoji });
 		};
 		fetchAgent();
-	}, [agentId]);
+	}, [agentId, setStarterAgent]);
 
 	return (
 		<div className="container mx-auto h-full flex flex-col items-center justify-center max-w-4xl px-6">
@@ -163,6 +193,11 @@ const StarterChatPage = () => {
 							className="w-full"
 							selectedModel={selectedModel}
 							onModelChange={setSelectedModel}
+							thinkingControlsEnabled={thinkingControlsEnabled}
+							thinkingEnabled={thinkingEnabled}
+							onThinkingEnabledChange={setThinkingEnabled}
+							thinkingEffort={thinkingEffort}
+							onThinkingEffortChange={setThinkingEffort}
 							agentReady={agentReady}
 							disconnectedServers={disconnectedMcpServers}
 							onAllConnected={refetchReady}

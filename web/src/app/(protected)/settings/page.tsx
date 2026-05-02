@@ -5,8 +5,10 @@ import { Trash2, Plus, KeyRound } from "lucide-react";
 import ForbiddenErrorDialog from "@/components/forbidden-error-dialog";
 import CreateTokenDialog from "./create-token-dialog";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { PageContainer } from "@/components/layout/page-container";
 import { api } from "@/lib/api/client";
+import { useUserStore } from "@/stores/user-store";
 
 interface PersonalAccessToken {
 	id: string;
@@ -28,6 +30,12 @@ export default function SettingsPage() {
 	const [isLoading, setIsLoading] = useState(true);
 	const [errorDialogOpen, setErrorDialogOpen] = useState(false);
 	const [createDialogOpen, setCreateDialogOpen] = useState(false);
+	const [isSavingThinkingControls, setIsSavingThinkingControls] = useState(false);
+	const user = useUserStore((state) => state.user);
+	const fetchUser = useUserStore((state) => state.fetchUser);
+	const updateThinkingControlsEnabled = useUserStore(
+		(state) => state.updateThinkingControlsEnabled,
+	);
 
 	useEffect(() => {
 		const fetchTokens = async () => {
@@ -50,6 +58,12 @@ export default function SettingsPage() {
 		};
 		fetchTokens();
 	}, []);
+
+	useEffect(() => {
+		fetchUser().catch((error) => {
+			console.error("Error fetching user settings:", error);
+		});
+	}, [fetchUser]);
 
 	const handleDelete = async (tokenId: string) => {
 		const confirmed = window.confirm(
@@ -87,6 +101,17 @@ export default function SettingsPage() {
 		}
 	};
 
+	const handleThinkingControlsToggle = async (checked: boolean) => {
+		setIsSavingThinkingControls(true);
+		try {
+			await updateThinkingControlsEnabled(checked);
+		} catch (error) {
+			console.error("Error updating thinking controls setting:", error);
+		} finally {
+			setIsSavingThinkingControls(false);
+		}
+	};
+
 	return (
 		<PageContainer>
 			<ForbiddenErrorDialog
@@ -114,6 +139,32 @@ export default function SettingsPage() {
 					<Plus className="w-4 h-4" />
 					Generate token
 				</Button>
+			</div>
+
+			<h2 className="font-primary font-bold text-lg tracking-tight text-[#2A2F2D] dark:text-white mb-2">
+				Chat
+			</h2>
+
+			<div className="rounded-[20px] border bg-card px-6 py-5 mb-8">
+				<div className="flex items-start justify-between gap-6">
+					<div>
+						<p className="text-sm font-semibold text-foreground">
+							Enable thinking controls in chat
+						</p>
+						<p className="text-sm text-muted-foreground mt-1">
+							Show a thinking switch and effort control before the first message
+							in new threads for supported models.
+						</p>
+					</div>
+					<Switch
+						className="cursor-pointer mt-1"
+						checked={user?.thinkingControlsEnabled ?? false}
+						disabled={isSavingThinkingControls || !user}
+						onCheckedChange={(checked) => {
+							void handleThinkingControlsToggle(checked);
+						}}
+					/>
+				</div>
 			</div>
 
 			<h2 className="font-primary font-bold text-lg tracking-tight text-[#2A2F2D] dark:text-white mb-2">

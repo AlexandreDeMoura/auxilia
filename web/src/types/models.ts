@@ -4,4 +4,6 @@ export interface Model {
 	chef: string;
 	chefSlug: string;
 	providers: string[];
+	supportsThinking: boolean;
+	supportsThinkingEffort: boolean;
 }

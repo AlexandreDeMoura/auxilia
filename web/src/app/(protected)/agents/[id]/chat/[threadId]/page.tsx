@@ -64,12 +64,14 @@ import { TodoList } from "@/components/ai-elements/todo-list";
 import type { Todo } from "@/components/ai-elements/todo-list";
 import { useParams } from "next/navigation";
 import { api, API_BASE_URL } from "@/lib/api/client";
-import { ThinkingLoader, DotsLoader } from "../components/loader";
+import { ThinkingLoader } from "../components/loader";
 import { useMcpServersStore } from "@/stores/mcp-servers-store";
 import { usePendingMessageStore } from "@/stores/pending-message-store";
+import { useUserStore } from "@/stores/user-store";
 import { useAgentReadiness } from "@/hooks/use-agent-readiness";
 import { useHitlApprovals } from "@/hooks/use-hitl-approvals";
 import { useChatHeaderStore } from "@/stores/chat-header-store";
+import { isThinkingEffort, ThinkingEffort } from "@/types/threads";
 import {
 	McpAppWidget,
 	type McpAppToolInfo,
@@ -322,6 +324,12 @@ const ChatPage = () => {
 	const threadId = params.threadId as string;
 	const hasInitialized = useRef(false);
 	const [threadModel, setThreadModel] = useState<string | undefined>(undefined);
+	const [threadThinkingEnabled, setThreadThinkingEnabled] = useState<
+		boolean | null
+	>(null);
+	const [threadThinkingEffort, setThreadThinkingEffort] = useState<
+		ThinkingEffort | null
+	>(null);
 	const [agentArchived, setAgentArchived] = useState(false);
 	const [initialValues, setInitialValues] = useState<Record<
 		string,
@@ -432,6 +440,9 @@ const ChatPage = () => {
 		(a, b) => b.length - a.length,
 	);
 	const { setCurrentChat, clearCurrentChat } = useChatHeaderStore();
+	const user = useUserStore((state) => state.user);
+	const fetchUser = useUserStore((state) => state.fetchUser);
+	const thinkingControlsEnabled = user?.thinkingControlsEnabled ?? false;
 
 	// ---- Handlers ----
 
@@ -575,6 +586,12 @@ const ChatPage = () => {
 	}, [clearCurrentChat]);
 
 	useEffect(() => {
+		fetchUser().catch((error) => {
+			console.error("Error fetching user settings:", error);
+		});
+	}, [fetchUser]);
+
+	useEffect(() => {
 		if (hasInitialized.current) return;
 		hasInitialized.current = true;
 
@@ -583,6 +600,16 @@ const ChatPage = () => {
 			const data = response.data;
 
 			setThreadModel(data.thread.modelId);
+			setThreadThinkingEnabled(
+				typeof data.thread.thinkingEnabled === "boolean"
+					? data.thread.thinkingEnabled
+					: null,
+			);
+			setThreadThinkingEffort(
+				isThinkingEffort(data.thread.thinkingEffort)
+					? data.thread.thinkingEffort
+					: null,
+			);
 			setCurrentChat({
 				agentName: data.thread.agentName ?? null,
 				agentEmoji: data.thread.agentEmoji ?? null,
@@ -978,6 +1005,10 @@ const ChatPage = () => {
 						stop={stop}
 						selectedModel={threadModel}
 						readOnlyModel={true}
+						thinkingControlsEnabled={thinkingControlsEnabled}
+						thinkingEnabled={threadThinkingEnabled}
+						thinkingEffort={threadThinkingEffort}
+						readOnlyThinking={true}
 						agentReady={agentReady}
 						disconnectedServers={disconnectedMcpServers}
 						onAllConnected={refetchReady}
