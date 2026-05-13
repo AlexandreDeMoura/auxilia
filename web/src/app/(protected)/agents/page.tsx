@@ -8,7 +8,7 @@ import ForbiddenErrorDialog from "@/components/forbidden-error-dialog";
 import { Button } from "@/shared/ui/button";
 import { api } from "@/shared/api/client";
 import { randomAgentColor } from "@/lib/colors";
-import { PageContainer } from "@/components/layout/page-container";
+import { PageContainer } from "@/widgets/app-shell";
 import { useAgentsStore } from "@/stores/agents-store";
 import { useUserStore } from "@/stores/user-store";
 import { Agent } from "@/types/agents";

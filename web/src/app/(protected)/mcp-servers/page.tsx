@@ -6,7 +6,7 @@ import MCPServerDialog from "@/app/(protected)/mcp-servers/components/mcp-server
 import { MCPServer } from "@/types/mcp-servers";
 import { Plus } from "lucide-react";
 import { Button } from "@/shared/ui/button";
-import { PageContainer } from "@/components/layout/page-container";
+import { PageContainer } from "@/widgets/app-shell";
 
 export default function MCPServersPage() {
 	const [dialogOpen, setDialogOpen] = useState(false);

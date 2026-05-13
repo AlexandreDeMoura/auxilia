@@ -1,9 +1,8 @@
 import { cookies } from "next/headers";
 
 import { SidebarProvider, SidebarTrigger } from "@/shared/ui/sidebar";
-import { AppSidebar } from "@/components/layout/app-sidebar";
+import { AppSidebar, ChatHeader } from "@/widgets/app-shell";
 import { StoreInitializer } from "@/components/providers/store-initializer";
-import { ChatHeader } from "@/components/layout/chat-header";
 
 export default async function ProtectedLayout({
 	children,

@@ -6,7 +6,7 @@ import ForbiddenErrorDialog from "@/components/forbidden-error-dialog";
 import InviteDialog from "./invite-dialog";
 import { SearchBar } from "@/shared/ui/search-bar";
 import { Button } from "@/shared/ui/button";
-import { PageContainer } from "@/components/layout/page-container";
+import { PageContainer } from "@/widgets/app-shell";
 import { SageDropdownMenu } from "@/shared/ui/sage-dropdown-menu";
 import { api } from "@/shared/api/client";
 import { useUserStore } from "@/stores/user-store";
