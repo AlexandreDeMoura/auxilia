@@ -14,6 +14,17 @@ External integrations:
 - **Slack**: invoke workspace agents from Slack.
 - **Langfuse**: monitor costs, LLM generations and tool calls.
 
+## Frontend conventions
+
+### Depreciation of /components
+
+Frontend is progressively getting refactored to use feature-sliced design as a codebase organization system. 
+Here is some soft rule for new features: 
+- New generic primitives go in shared/ui.
+- New route-only UI stays colocated under app/.../components.
+- New domain UI goes under entities/*/ui or features/*/ui.
+- New composed regions go under widgets/*.
+
 ## Backend conventions
 
 ### Layered architecture
