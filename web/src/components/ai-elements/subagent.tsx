@@ -4,8 +4,8 @@ import { useControllableState } from "@radix-ui/react-use-controllable-state";
 import {
 	Collapsible,
 	CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { cn } from "@/lib/utils";
+} from "@/shared/ui/collapsible";
+import { cn } from "@/shared/lib/utils";
 import { ChevronDownIcon } from "lucide-react";
 import { memo, useEffect } from "react";
 import { Loader } from "@/components/ai-elements/loader";

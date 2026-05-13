@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { api } from "@/lib/api/client";
+import { api } from "@/shared/api/client";
 
 type AgentReadyStatus = "ready" | "not_configured" | "disconnected" | null;
 

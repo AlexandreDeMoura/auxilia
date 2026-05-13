@@ -2,7 +2,7 @@
 "use client";
 
 import type { UseChatHelpers } from "@ai-sdk/react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import Image from "next/image";
 import {
 	Command,
@@ -12,32 +12,32 @@ import {
 	CommandItem,
 	CommandList,
 	CommandSeparator,
-} from "@/components/ui/command";
+} from "@/shared/ui/command";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/shared/ui/dropdown-menu";
 import {
 	HoverCard,
 	HoverCardContent,
 	HoverCardTrigger,
-} from "@/components/ui/hover-card";
+} from "@/shared/ui/hover-card";
 import {
 	InputGroup,
 	InputGroupAddon,
 	InputGroupButton,
 	InputGroupTextarea,
-} from "@/components/ui/input-group";
+} from "@/shared/ui/input-group";
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+} from "@/shared/ui/select";
+import { cn } from "@/shared/lib/utils";
 import type { ChatStatus, FileUIPart } from "ai";
 import {
 	CornerDownLeftIcon,

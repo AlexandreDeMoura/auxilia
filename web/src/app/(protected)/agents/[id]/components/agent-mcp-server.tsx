@@ -5,10 +5,10 @@ import Image from "next/image";
 import { MCPServer } from "@/types/mcp-servers";
 import { Agent } from "@/types/agents";
 import { ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { Badge } from "@/shared/ui/badge";
 import AgentMCPTool from "./agent-mcp-tool";
-import { api } from "@/lib/api/client";
+import { api } from "@/shared/api/client";
 
 interface AgentMCPServerProps {
 	agent: Agent;

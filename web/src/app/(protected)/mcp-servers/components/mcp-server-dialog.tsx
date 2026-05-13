@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { api } from "@/lib/api/client";
+import { api } from "@/shared/api/client";
 import {
 	MCPAuthType,
 	MCPServer,
@@ -10,14 +10,14 @@ import {
 	OfficialMCPServer,
 } from "@/types/mcp-servers";
 import { useMcpServersStore } from "@/stores/mcp-servers-store";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/shared/ui/dialog";
 import { X, CheckIcon, ChevronDown } from "lucide-react";
 import ForbiddenErrorDialog from "@/components/forbidden-error-dialog";
 import Image from "next/image";
-import { SageInput, SageTextarea } from "@/components/ui/sage-input";
-import { SageButton } from "@/components/ui/sage-button";
-import { SageDropdownMenu } from "@/components/ui/sage-dropdown-menu";
-import { SearchBar } from "@/components/ui/search-bar";
+import { SageInput, SageTextarea } from "@/shared/ui/sage-input";
+import { SageButton } from "@/shared/ui/sage-button";
+import { SageDropdownMenu } from "@/shared/ui/sage-dropdown-menu";
+import { SearchBar } from "@/shared/ui/search-bar";
 
 const DEFAULT_ICON = "https://storage.googleapis.com/choose-assets/mcp.png";
 const GCS_HOST = "storage.googleapis.com";

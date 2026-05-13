@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { Agent } from "@/types/agents";
 import AgentEditor from "../components/agent-editor";
-import { api } from "@/lib/api/client";
+import { api } from "@/shared/api/client";
 
 interface AgentPageProps {
 	params: Promise<{ id: string }>;

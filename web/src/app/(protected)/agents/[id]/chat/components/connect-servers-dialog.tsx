@@ -8,8 +8,8 @@ import {
 	DialogHeader,
 	DialogTitle,
 	DialogDescription,
-} from "@/components/ui/dialog";
-import { api } from "@/lib/api/client";
+} from "@/shared/ui/dialog";
+import { api } from "@/shared/api/client";
 import { MCPServer } from "@/types/mcp-servers";
 import { CheckCircle2Icon, LoaderIcon } from "lucide-react";
 

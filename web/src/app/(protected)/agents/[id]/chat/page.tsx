@@ -12,11 +12,11 @@ import { SelectAgentDialog } from "./components/select-agent-dialog";
 import { useThreadsStore } from "@/stores/threads-store";
 import { usePendingMessageStore } from "@/stores/pending-message-store";
 import { useModelsStore } from "@/stores/models-store";
-import { api } from "@/lib/api/client";
+import { api } from "@/shared/api/client";
 import { ChevronDown } from "lucide-react";
 import { Agent } from "@/types/agents";
 import { AgentAvatar } from "@/components/ui/agent-avatar";
-import { SageAlert } from "@/components/ui/sage-alert";
+import { SageAlert } from "@/shared/ui/sage-alert";
 import { getDefaultModel } from "@/lib/utils/get-default-model";
 import { useAgentReadiness } from "@/hooks/use-agent-readiness";
 

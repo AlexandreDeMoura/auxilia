@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { MCPServer } from "@/types/mcp-servers";
-import { api } from "@/lib/api/client";
+import { api } from "@/shared/api/client";
 
 interface McpServersState {
 	mcpServers: MCPServer[];

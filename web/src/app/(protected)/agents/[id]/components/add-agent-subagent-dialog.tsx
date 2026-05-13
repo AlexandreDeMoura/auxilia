@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { Plus } from "lucide-react";
-import { api } from "@/lib/api/client";
+import { api } from "@/shared/api/client";
 import { Agent } from "@/types/agents";
 import { useAgentsStore } from "@/stores/agents-store";
 import {
@@ -10,8 +10,8 @@ import {
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+} from "@/shared/ui/dialog";
+import { Button } from "@/shared/ui/button";
 
 interface AddAgentSubagentDialogProps {
 	open: boolean;

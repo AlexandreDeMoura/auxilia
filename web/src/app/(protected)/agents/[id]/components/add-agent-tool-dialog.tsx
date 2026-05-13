@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Plus } from "lucide-react";
-import { api } from "@/lib/api/client";
+import { api } from "@/shared/api/client";
 import { MCPServer } from "@/types/mcp-servers";
 import { Agent } from "@/types/agents";
 import {
@@ -13,8 +13,8 @@ import {
 	DialogDescription,
 	DialogHeader,
 	DialogTitle,
-} from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
+} from "@/shared/ui/dialog";
+import { Switch } from "@/shared/ui/switch";
 
 interface AddAgentToolDialogProps {
 	open: boolean;

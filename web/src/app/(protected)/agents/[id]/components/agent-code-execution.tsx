@@ -4,9 +4,9 @@ import { useState } from "react";
 import Image from "next/image";
 import { ChevronRight } from "lucide-react";
 import { Agent } from "@/types/agents";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { api } from "@/lib/api/client";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { api } from "@/shared/api/client";
 
 const SANDBOX_TOOLS = [
 	{ name: "ls", description: "List files in a directory with metadata (size, modified time)" },

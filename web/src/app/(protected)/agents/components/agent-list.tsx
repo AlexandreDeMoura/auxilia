@@ -4,8 +4,8 @@ import { useState, useEffect, useMemo } from "react";
 import { Compass, Info, Plus, Search, Users, Zap } from "lucide-react";
 import { Agent } from "@/types/agents";
 import AgentCard from "@/app/(protected)/agents/components/agent-card";
-import { api } from "@/lib/api/client";
-import { SearchBar } from "@/components/ui/search-bar";
+import { api } from "@/shared/api/client";
+import { SearchBar } from "@/shared/ui/search-bar";
 
 const TABS = [
 	{

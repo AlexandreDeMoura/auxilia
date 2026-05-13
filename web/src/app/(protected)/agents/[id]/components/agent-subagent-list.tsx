@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Plus, X, Info } from "lucide-react";
 import { Agent } from "@/types/agents";
-import { api } from "@/lib/api/client";
+import { api } from "@/shared/api/client";
 import { useAgentsStore } from "@/stores/agents-store";
 import AddAgentSubagentDialog from "./add-agent-subagent-dialog";
 

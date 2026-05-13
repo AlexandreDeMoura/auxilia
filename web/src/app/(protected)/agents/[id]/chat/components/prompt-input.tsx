@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import { ModelSelectorLogo } from "@/components/ai-elements/model-selector";
 import {
 	PromptInput,
@@ -25,14 +25,14 @@ import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@/shared/ui/tooltip";
 import {
 	Dialog,
 	DialogContent,
 	DialogTitle,
 	DialogTrigger,
-} from "@/components/ui/dialog";
-import { SearchBar } from "@/components/ui/search-bar";
+} from "@/shared/ui/dialog";
+import { SearchBar } from "@/shared/ui/search-bar";
 
 const sagePromptToolButtonClass = cn(
 	"h-9 px-3 gap-2 rounded-full",

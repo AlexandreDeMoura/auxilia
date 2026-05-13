@@ -5,8 +5,8 @@ import {
 	Dialog,
 	DialogContent,
 	DialogTitle,
-} from "@/components/ui/dialog";
-import { SearchBar } from "@/components/ui/search-bar";
+} from "@/shared/ui/dialog";
+import { SearchBar } from "@/shared/ui/search-bar";
 import { AgentAvatar } from "@/components/ui/agent-avatar";
 import type { Agent } from "@/types/agents";
 import { useAgentsStore } from "@/stores/agents-store";

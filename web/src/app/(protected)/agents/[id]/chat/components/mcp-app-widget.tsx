@@ -2,8 +2,8 @@
 
 import { useCallback, useMemo } from "react";
 import { AppRenderer } from "@mcp-ui/client";
-import { api } from "@/lib/api/client";
-import { cn } from "@/lib/utils";
+import { api } from "@/shared/api/client";
+import { cn } from "@/shared/lib/utils";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { useMcpHostContext } from "@/hooks/use-mcp-host-context";
 

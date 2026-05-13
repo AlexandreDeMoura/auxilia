@@ -30,13 +30,13 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 	SidebarMenuAction,
-} from "@/components/ui/sidebar";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { SageDropdownMenu } from "@/components/ui/sage-dropdown-menu";
+} from "@/shared/ui/sidebar";
+import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
+import { SageDropdownMenu } from "@/shared/ui/sage-dropdown-menu";
 import { useThreadsStore } from "@/stores/threads-store";
 import { useUserStore } from "@/stores/user-store";
 import { useAgentsStore } from "@/stores/agents-store";
-import { api } from "@/lib/api/client";
+import { api } from "@/shared/api/client";
 import { AgentAvatar } from "@/components/ui/agent-avatar";
 import { useTheme } from "next-themes";
 

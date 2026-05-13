@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Copy, Check, X } from "lucide-react";
-import { api } from "@/lib/api/client";
+import { api } from "@/shared/api/client";
 
 type Role = "member" | "editor" | "admin";
 

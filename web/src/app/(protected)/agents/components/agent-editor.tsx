@@ -9,11 +9,11 @@ import { ShieldCheck, ArrowRight, ArchiveIcon } from "lucide-react";
 import { Agent } from "@/types/agents";
 import AgentToolList from "../[id]/components/agent-tool-list";
 import AgentSubagentList from "../[id]/components/agent-subagent-list";
-import { api } from "@/lib/api/client";
+import { api } from "@/shared/api/client";
 import { useAgentsStore } from "@/stores/agents-store";
 import { useThreadsStore } from "@/stores/threads-store";
 import { useUserStore } from "@/stores/user-store";
-import { SageDropdownMenu } from "@/components/ui/sage-dropdown-menu";
+import { SageDropdownMenu } from "@/shared/ui/sage-dropdown-menu";
 import AgentPermissionsDialog from "./agent-permissions-dialog";
 
 interface AgentEditorProps {

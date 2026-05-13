@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarTrigger } from "@/shared/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { StoreInitializer } from "@/components/providers/store-initializer";
 import { ChatHeader } from "@/components/layout/chat-header";

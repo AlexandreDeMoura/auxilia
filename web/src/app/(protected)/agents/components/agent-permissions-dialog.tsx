@@ -2,17 +2,17 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Trash2, ChevronDown } from "lucide-react";
-import { api } from "@/lib/api/client";
+import { api } from "@/shared/api/client";
 import {
 	Dialog,
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
 	DialogFooter,
-} from "@/components/ui/dialog";
-import { SearchBar } from "@/components/ui/search-bar";
-import { SageButton } from "@/components/ui/sage-button";
-import { SageDropdownMenu } from "@/components/ui/sage-dropdown-menu";
+} from "@/shared/ui/dialog";
+import { SearchBar } from "@/shared/ui/search-bar";
+import { SageButton } from "@/shared/ui/sage-button";
+import { SageDropdownMenu } from "@/shared/ui/sage-dropdown-menu";
 
 type PermissionLevel = "user" | "editor" | "admin";
 

@@ -4,8 +4,8 @@ import {
 	Collapsible,
 	CollapsibleContent,
 	CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { cn } from "@/lib/utils";
+} from "@/shared/ui/collapsible";
+import { cn } from "@/shared/lib/utils";
 import type { ToolUIPart } from "ai";
 import {
 	CheckIcon,

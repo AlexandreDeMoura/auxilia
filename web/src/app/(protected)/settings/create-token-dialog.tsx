@@ -2,16 +2,16 @@
 
 import { useState } from "react";
 import { Copy, Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
+import { Label } from "@/shared/ui/label";
 import {
 	Dialog,
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
-} from "@/components/ui/dialog";
-import { api } from "@/lib/api/client";
+} from "@/shared/ui/dialog";
+import { api } from "@/shared/api/client";
 
 interface PersonalAccessToken {
 	id: string;

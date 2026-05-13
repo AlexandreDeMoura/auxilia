@@ -5,7 +5,7 @@ import MCPServerList from "@/app/(protected)/mcp-servers/components/mcp-server-l
 import MCPServerDialog from "@/app/(protected)/mcp-servers/components/mcp-server-dialog";
 import { MCPServer } from "@/types/mcp-servers";
 import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import { PageContainer } from "@/components/layout/page-container";
 
 export default function MCPServersPage() {

@@ -4,11 +4,11 @@ import { useEffect, useState, useMemo } from "react";
 import { Trash2, Plus, Copy, Check, Mail, ChevronDown } from "lucide-react";
 import ForbiddenErrorDialog from "@/components/forbidden-error-dialog";
 import InviteDialog from "./invite-dialog";
-import { SearchBar } from "@/components/ui/search-bar";
-import { Button } from "@/components/ui/button";
+import { SearchBar } from "@/shared/ui/search-bar";
+import { Button } from "@/shared/ui/button";
 import { PageContainer } from "@/components/layout/page-container";
-import { SageDropdownMenu } from "@/components/ui/sage-dropdown-menu";
-import { api } from "@/lib/api/client";
+import { SageDropdownMenu } from "@/shared/ui/sage-dropdown-menu";
+import { api } from "@/shared/api/client";
 import { useUserStore } from "@/stores/user-store";
 
 interface User {

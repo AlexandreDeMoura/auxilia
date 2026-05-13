@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { Agent, ToolStatus } from "@/types/agents";
-import { api } from "@/lib/api/client";
+import { api } from "@/shared/api/client";
 import {
 	ThreeStateToggle,
 	ToggleState,
-} from "@/components/ui/three-state-toggle";
+} from "@/shared/ui/three-state-toggle";
 
 interface AgentMCPToolProps {
 	agent: Agent;

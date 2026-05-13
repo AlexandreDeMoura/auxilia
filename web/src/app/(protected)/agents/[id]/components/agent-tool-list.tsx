@@ -7,7 +7,7 @@ import { Agent } from "@/types/agents";
 import AgentMCPServer from "./agent-mcp-server";
 import AgentCodeExecution from "./agent-code-execution";
 import AddAgentToolDialog from "./add-agent-tool-dialog";
-import { api } from "@/lib/api/client";
+import { api } from "@/shared/api/client";
 import { useAgentsStore } from "@/stores/agents-store";
 
 interface AgentToolListProps {

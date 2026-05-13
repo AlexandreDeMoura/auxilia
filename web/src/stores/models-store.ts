@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { api } from "@/lib/api/client";
+import { api } from "@/shared/api/client";
 import { Model } from "@/types/models";
 
 interface ModelsState {

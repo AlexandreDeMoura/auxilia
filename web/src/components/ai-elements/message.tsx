@@ -1,14 +1,14 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { ButtonGroup, ButtonGroupText } from "@/components/ui/button-group";
+import { Button } from "@/shared/ui/button";
+import { ButtonGroup, ButtonGroupText } from "@/shared/ui/button-group";
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipProvider,
 	TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+} from "@/shared/ui/tooltip";
+import { cn } from "@/shared/lib/utils";
 import type { FileUIPart, UIMessage } from "ai";
 import {
 	ChevronLeftIcon,

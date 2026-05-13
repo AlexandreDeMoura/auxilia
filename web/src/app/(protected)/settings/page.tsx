@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { Trash2, Plus, KeyRound } from "lucide-react";
 import ForbiddenErrorDialog from "@/components/forbidden-error-dialog";
 import CreateTokenDialog from "./create-token-dialog";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import { PageContainer } from "@/components/layout/page-container";
-import { api } from "@/lib/api/client";
+import { api } from "@/shared/api/client";
 
 interface PersonalAccessToken {
 	id: string;

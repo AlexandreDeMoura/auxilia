@@ -53,8 +53,8 @@ import {
 	Attachments,
 } from "@/components/ai-elements/attachments";
 import { type PromptInputMessage } from "@/components/ai-elements/prompt-input";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Button } from "@/shared/ui/button";
+import { cn } from "@/shared/lib/utils";
 import ChatPromptInput from "../components/prompt-input";
 import { RefreshCcwIcon, CopyIcon, ArchiveIcon } from "lucide-react";
 import {
@@ -70,7 +70,7 @@ import {
 import { TodoList } from "@/components/ai-elements/todo-list";
 import type { Todo } from "@/components/ai-elements/todo-list";
 import { useParams } from "next/navigation";
-import { api, API_BASE_URL } from "@/lib/api/client";
+import { api, API_BASE_URL } from "@/shared/api/client";
 import { ThinkingLoader, DotsLoader } from "../components/loader";
 import { useMcpServersStore } from "@/stores/mcp-servers-store";
 import { usePendingMessageStore } from "@/stores/pending-message-store";

@@ -1,8 +1,8 @@
 "use client";
 
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Alert, AlertDescription } from "@/shared/ui/alert";
+import { Button } from "@/shared/ui/button";
+import { cn } from "@/shared/lib/utils";
 import type { ToolUIPart } from "ai";
 import {
 	type ComponentProps,

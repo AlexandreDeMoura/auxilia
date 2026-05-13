@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import { agentColorBackground } from "@/lib/colors";
 
 type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl";

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { Thread } from "@/types/threads";
-import { api } from "@/lib/api/client";
+import { api } from "@/shared/api/client";
 
 interface ThreadsState {
 	threads: Thread[];
