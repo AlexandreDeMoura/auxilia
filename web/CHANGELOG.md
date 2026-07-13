@@ -1,5 +1,59 @@
 # Changelog
 
+## [0.5.18](https://github.com/AlexandreDeMoura/auxilia/compare/web-v0.5.17...web-v0.5.18) (2026-07-13)
+
+
+### Features
+
+* add color field to agents with pastel palette ([6b977ee](https://github.com/AlexandreDeMoura/auxilia/commit/6b977ee03410419c5853af8786dbcefdfcf1c31c))
+* add search bar to Add Subagent dialog ([#111](https://github.com/AlexandreDeMoura/auxilia/issues/111)) ([5e7b60e](https://github.com/AlexandreDeMoura/auxilia/commit/5e7b60e5d306ce7fb0a70be755605a101206f775))
+* add subagent bindings with Deep Agents integration ([#63](https://github.com/AlexandreDeMoura/auxilia/issues/63)) ([c01eeea](https://github.com/AlexandreDeMoura/auxilia/commit/c01eeeac5bab6d59ec43d4ac26a14a59a8ad693c))
+* agent thread history page + thread source ([#94](https://github.com/AlexandreDeMoura/auxilia/issues/94)) ([e9faa17](https://github.com/AlexandreDeMoura/auxilia/commit/e9faa17ab8da4104b661bf976e7b97144bdfbb82))
+* **agents:** add Archived tab with restore and permanent delete ([#130](https://github.com/AlexandreDeMoura/auxilia/issues/130)) ([f6bed78](https://github.com/AlexandreDeMoura/auxilia/commit/f6bed781c46120fa90cdabff86a51c485598aecf))
+* **agents:** display agent owner on card and dialog ([#181](https://github.com/AlexandreDeMoura/auxilia/issues/181)) ([b2222cd](https://github.com/AlexandreDeMoura/auxilia/commit/b2222cdc075ec2c2f3ee6de7455c76ac04c4370f))
+* **agents:** improve agents list navigation and tabs ([#133](https://github.com/AlexandreDeMoura/auxilia/issues/133)) ([05e9ed3](https://github.com/AlexandreDeMoura/auxilia/commit/05e9ed30d37a3138e716ce1f8ffca48cefde4b44))
+* allow archive agents ([#61](https://github.com/AlexandreDeMoura/auxilia/issues/61)) ([d6a04dc](https://github.com/AlexandreDeMoura/auxilia/commit/d6a04dc8dd8a4bd39ea988426d8bc8161423e8c7))
+* dynamic default model selection  ([#1](https://github.com/AlexandreDeMoura/auxilia/issues/1)) ([75941a8](https://github.com/AlexandreDeMoura/auxilia/commit/75941a8c9e072c617ba12bd1442206f786e5ac60))
+* enforce auth on agent routes and update related tests ([#92](https://github.com/AlexandreDeMoura/auxilia/issues/92)) ([65f3658](https://github.com/AlexandreDeMoura/auxilia/commit/65f3658fc70856247fb6adfc387ca30cb1c9886c))
+* **model-providers:** add GLM 5.2 via OpenRouter with selectable rea… ([#197](https://github.com/AlexandreDeMoura/auxilia/issues/197)) ([6ec9138](https://github.com/AlexandreDeMoura/auxilia/commit/6ec9138598f00eb9ccb3cbf589f5f5382ae670f9))
+* **model:** add muse from meta ([#211](https://github.com/AlexandreDeMoura/auxilia/issues/211)) ([0771ba6](https://github.com/AlexandreDeMoura/auxilia/commit/0771ba6edc055420ef45e29f4e47fdb13d5a50bc))
+* organize agents list with tags ([#176](https://github.com/AlexandreDeMoura/auxilia/issues/176)) ([648e6ea](https://github.com/AlexandreDeMoura/auxilia/commit/648e6ea4fb4ee19fd4ac89db3df71bfcfa7a77c6))
+* per-agent sandbox with code execution UI ([#68](https://github.com/AlexandreDeMoura/auxilia/issues/68)) ([ed007a5](https://github.com/AlexandreDeMoura/auxilia/commit/ed007a56e0281184330265875413ae74c9267ac9))
+* **runs:** move run records to Postgres + thread last-run status ([#194](https://github.com/AlexandreDeMoura/auxilia/issues/194)) ([fae7fd0](https://github.com/AlexandreDeMoura/auxilia/commit/fae7fd0696be338b4a83a41f3004360dcc7da56f))
+* **runs:** react to run status changes in sidebar and run history ([#196](https://github.com/AlexandreDeMoura/auxilia/issues/196)) ([023a2e9](https://github.com/AlexandreDeMoura/auxilia/commit/023a2e92f77cae6bc0a13ddc843ffca94fe2d09f))
+* teams for agent access ([#173](https://github.com/AlexandreDeMoura/auxilia/issues/173)) ([30552b7](https://github.com/AlexandreDeMoura/auxilia/commit/30552b79e49e170c88d2418bc9a1b77fe2b75b17))
+* **threads:** rename threads from the sidebar ([#156](https://github.com/AlexandreDeMoura/auxilia/issues/156)) ([9f60eef](https://github.com/AlexandreDeMoura/auxilia/commit/9f60eef660d6faf67ce98d734d01b6171e50f5ea))
+* **triggers:** add "Run now" action to trigger card menu ([#189](https://github.com/AlexandreDeMoura/auxilia/issues/189)) ([076e102](https://github.com/AlexandreDeMoura/auxilia/commit/076e102e62665ce7b06e0571a7a1f8fc7afbdb18))
+* **triggers:** add border to trigger thread icon in sidebar ([#187](https://github.com/AlexandreDeMoura/auxilia/issues/187)) ([f829420](https://github.com/AlexandreDeMoura/auxilia/commit/f829420e6c721de7a6f005f8f9ba0ca0eb4319b1))
+* **triggers:** link trigger name in chat header to trigger detail ([#188](https://github.com/AlexandreDeMoura/auxilia/issues/188)) ([b57c683](https://github.com/AlexandreDeMoura/auxilia/commit/b57c6838fadaa6b8a223a6b28a552cd9105b4998))
+* **triggers:** redesign schedule time field with chevron picker ([#186](https://github.com/AlexandreDeMoura/auxilia/issues/186)) ([9f87279](https://github.com/AlexandreDeMoura/auxilia/commit/9f87279310eaf1f1c6e164158a7fd39604f69245))
+* **triggers:** scheduled agent runs ([#182](https://github.com/AlexandreDeMoura/auxilia/issues/182)) ([d987da9](https://github.com/AlexandreDeMoura/auxilia/commit/d987da917f48fa9c8f63809de5903f261d3eca12))
+* **web:** durable run wiring — run-id capture, server Stop, reattach ([#153](https://github.com/AlexandreDeMoura/auxilia/issues/153)) ([4a1cf3a](https://github.com/AlexandreDeMoura/auxilia/commit/4a1cf3ac7173b7c563c2593436998c4567fae6dd))
+* **web:** show subagent avatars in agent card footer ([#171](https://github.com/AlexandreDeMoura/auxilia/issues/171)) ([8e50338](https://github.com/AlexandreDeMoura/auxilia/commit/8e503380e9c1a91c2cdc827047cdb1f093636b00))
+* **web:** Studio shell redesign — floating sidebar, page specs & smooth collapse ([#119](https://github.com/AlexandreDeMoura/auxilia/issues/119)) ([301c3ff](https://github.com/AlexandreDeMoura/auxilia/commit/301c3ffdaa0681c6b20f19634c47ec71a667eb88))
+
+
+### Bug Fixes
+
+* address Cubic review comments from [#176](https://github.com/AlexandreDeMoura/auxilia/issues/176) ([#178](https://github.com/AlexandreDeMoura/auxilia/issues/178)) ([efc35d6](https://github.com/AlexandreDeMoura/auxilia/commit/efc35d69eea28ac3a1f8dca0650010b6bcd06500))
+* conflicting tailwind imports ([13c8f66](https://github.com/AlexandreDeMoura/auxilia/commit/13c8f66636b3e03dda812f684744f6eed9d9b5f1))
+* **mcp:** render Metabase interactive visualize_query MCP App ([#128](https://github.com/AlexandreDeMoura/auxilia/issues/128)) ([2bbc28c](https://github.com/AlexandreDeMoura/auxilia/commit/2bbc28c8ac9febaf291f7d35e52227df49347ed2))
+* pass structuredContent from artifact to AppRenderer for MCP app widgets ([e7374a6](https://github.com/AlexandreDeMoura/auxilia/commit/e7374a6e31359539cbf64a19917e7685fe94c3d4))
+* portal agent dialog to body to fix positioning inside animated cards ([1233943](https://github.com/AlexandreDeMoura/auxilia/commit/123394342129dcbc3139b11f682fba60d0e870bf))
+* remove client setup for DCR official MCP servers ([92aa1d2](https://github.com/AlexandreDeMoura/auxilia/commit/92aa1d28e494e199ff9435e8e33b4576add9ba36))
+* scope HITL decisions to hanging tool calls only ([#93](https://github.com/AlexandreDeMoura/auxilia/issues/93)) ([5675fec](https://github.com/AlexandreDeMoura/auxilia/commit/5675fececc2b3fd8f0aece8b591b5f9a365d9fae))
+* **slack:** de-duplicate HITL tool header; keep quote bar on multi-line args ([#165](https://github.com/AlexandreDeMoura/auxilia/issues/165)) ([b1500bf](https://github.com/AlexandreDeMoura/auxilia/commit/b1500bf870842ca8ef31c3b271cf94605a235d50))
+* **triggers:** show running state in trigger run history ([#209](https://github.com/AlexandreDeMoura/auxilia/issues/209)) ([83c114f](https://github.com/AlexandreDeMoura/auxilia/commit/83c114fed296d26311018fd98ae70f101ce011fc))
+* update pending invites UI without needing refresh ([#38](https://github.com/AlexandreDeMoura/auxilia/issues/38)) ([1a2bf7b](https://github.com/AlexandreDeMoura/auxilia/commit/1a2bf7b4c7add6d0f8370b72c01b4ee03dbcc692))
+* **web:** surface real tool error text; refactor(agents): collapse agent construction ([#144](https://github.com/AlexandreDeMoura/auxilia/issues/144)) ([e7fdc8e](https://github.com/AlexandreDeMoura/auxilia/commit/e7fdc8e0b82fcb0d52cf8b3c62bd02b4c5e0084e))
+
+
+### Code Refactoring
+
+* enforce CONVENTIONS.md naming across backend + frontend ([#100](https://github.com/AlexandreDeMoura/auxilia/issues/100)) ([f3af7c2](https://github.com/AlexandreDeMoura/auxilia/commit/f3af7c2159aa8fc83e47bc34e41f1a3367c9f00f))
+* rename binding association tables and simplify naming ([#67](https://github.com/AlexandreDeMoura/auxilia/issues/67)) ([dfab494](https://github.com/AlexandreDeMoura/auxilia/commit/dfab49435fd9fb8490263762224ba9b3875d2bac))
+* **triggers:** remove Draft badge from new trigger header ([#184](https://github.com/AlexandreDeMoura/auxilia/issues/184)) ([fd88991](https://github.com/AlexandreDeMoura/auxilia/commit/fd889913414fbc4def3fb49a677cc02557f5cf54))
+
 ## [0.5.17](https://github.com/keurcien/auxilia/compare/web-v0.5.16...web-v0.5.17) (2026-07-11)
 
 
