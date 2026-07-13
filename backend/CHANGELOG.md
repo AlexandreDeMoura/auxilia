@@ -1,5 +1,67 @@
 # Changelog
 
+## [0.4.22](https://github.com/AlexandreDeMoura/auxilia/compare/backend-v0.4.21...backend-v0.4.22) (2026-07-13)
+
+
+### Features
+
+* add color field to agents with pastel palette ([6b977ee](https://github.com/AlexandreDeMoura/auxilia/commit/6b977ee03410419c5853af8786dbcefdfcf1c31c))
+* add subagent bindings with Deep Agents integration ([#63](https://github.com/AlexandreDeMoura/auxilia/issues/63)) ([c01eeea](https://github.com/AlexandreDeMoura/auxilia/commit/c01eeeac5bab6d59ec43d4ac26a14a59a8ad693c))
+* agent thread history page + thread source ([#94](https://github.com/AlexandreDeMoura/auxilia/issues/94)) ([e9faa17](https://github.com/AlexandreDeMoura/auxilia/commit/e9faa17ab8da4104b661bf976e7b97144bdfbb82))
+* **agents:** add Archived tab with restore and permanent delete ([#130](https://github.com/AlexandreDeMoura/auxilia/issues/130)) ([f6bed78](https://github.com/AlexandreDeMoura/auxilia/commit/f6bed781c46120fa90cdabff86a51c485598aecf))
+* **agents:** display agent owner on card and dialog ([#181](https://github.com/AlexandreDeMoura/auxilia/issues/181)) ([b2222cd](https://github.com/AlexandreDeMoura/auxilia/commit/b2222cdc075ec2c2f3ee6de7455c76ac04c4370f))
+* **agents:** durable Redis-backed agent runtime ([#153](https://github.com/AlexandreDeMoura/auxilia/issues/153)) ([72e6686](https://github.com/AlexandreDeMoura/auxilia/commit/72e668685d02c9746bc67fa60d4697f8289b4c91))
+* allow archive agents ([#61](https://github.com/AlexandreDeMoura/auxilia/issues/61)) ([d6a04dc](https://github.com/AlexandreDeMoura/auxilia/commit/d6a04dc8dd8a4bd39ea988426d8bc8161423e8c7))
+* dynamic default model selection  ([#1](https://github.com/AlexandreDeMoura/auxilia/issues/1)) ([75941a8](https://github.com/AlexandreDeMoura/auxilia/commit/75941a8c9e072c617ba12bd1442206f786e5ac60))
+* enforce auth on agent routes and update related tests ([#92](https://github.com/AlexandreDeMoura/auxilia/issues/92)) ([65f3658](https://github.com/AlexandreDeMoura/auxilia/commit/65f3658fc70856247fb6adfc387ca30cb1c9886c))
+* **mcp:** discover OAuth scopes via PRM, drop tool-call 401 probe ([#135](https://github.com/AlexandreDeMoura/auxilia/issues/135)) ([a986e5f](https://github.com/AlexandreDeMoura/auxilia/commit/a986e5fbf3599b3008b4863d3e44ea5d9e8c13ff))
+* **mcp:** hardcode Gmail OAuth scopes instead of PRM discovery ([#160](https://github.com/AlexandreDeMoura/auxilia/issues/160)) ([a4c719b](https://github.com/AlexandreDeMoura/auxilia/commit/a4c719b460dca8881fd1ef453b74384894707844))
+* **model-providers:** add GLM 5.2 via OpenRouter with selectable rea… ([#197](https://github.com/AlexandreDeMoura/auxilia/issues/197)) ([6ec9138](https://github.com/AlexandreDeMoura/auxilia/commit/6ec9138598f00eb9ccb3cbf589f5f5382ae670f9))
+* **model-providers:** disable Claude Opus models ([#174](https://github.com/AlexandreDeMoura/auxilia/issues/174)) ([f2afc5b](https://github.com/AlexandreDeMoura/auxilia/commit/f2afc5bdadbe9196e2f86765a22685741beefde1))
+* **model:** add muse from meta ([#211](https://github.com/AlexandreDeMoura/auxilia/issues/211)) ([0771ba6](https://github.com/AlexandreDeMoura/auxilia/commit/0771ba6edc055420ef45e29f4e47fdb13d5a50bc))
+* organize agents list with tags ([#176](https://github.com/AlexandreDeMoura/auxilia/issues/176)) ([648e6ea](https://github.com/AlexandreDeMoura/auxilia/commit/648e6ea4fb4ee19fd4ac89db3df71bfcfa7a77c6))
+* per-agent sandbox with code execution UI ([#68](https://github.com/AlexandreDeMoura/auxilia/issues/68)) ([ed007a5](https://github.com/AlexandreDeMoura/auxilia/commit/ed007a56e0281184330265875413ae74c9267ac9))
+* **runs:** move run records to Postgres + thread last-run status ([#194](https://github.com/AlexandreDeMoura/auxilia/issues/194)) ([fae7fd0](https://github.com/AlexandreDeMoura/auxilia/commit/fae7fd0696be338b4a83a41f3004360dcc7da56f))
+* **runs:** react to run status changes in sidebar and run history ([#196](https://github.com/AlexandreDeMoura/auxilia/issues/196)) ([023a2e9](https://github.com/AlexandreDeMoura/auxilia/commit/023a2e92f77cae6bc0a13ddc843ffca94fe2d09f))
+* **slack:** run Slack agent turns through the durable runtime ([#161](https://github.com/AlexandreDeMoura/auxilia/issues/161)) ([de4e017](https://github.com/AlexandreDeMoura/auxilia/commit/de4e01745ad538e826c39a95a1516804ed9f9167))
+* teams for agent access ([#173](https://github.com/AlexandreDeMoura/auxilia/issues/173)) ([30552b7](https://github.com/AlexandreDeMoura/auxilia/commit/30552b79e49e170c88d2418bc9a1b77fe2b75b17))
+* **threads:** rename threads from the sidebar ([#156](https://github.com/AlexandreDeMoura/auxilia/issues/156)) ([9f60eef](https://github.com/AlexandreDeMoura/auxilia/commit/9f60eef660d6faf67ce98d734d01b6171e50f5ea))
+* **triggers:** scheduled agent runs ([#182](https://github.com/AlexandreDeMoura/auxilia/issues/182)) ([d987da9](https://github.com/AlexandreDeMoura/auxilia/commit/d987da917f48fa9c8f63809de5903f261d3eca12))
+
+
+### Bug Fixes
+
+* address Cubic review comments from [#176](https://github.com/AlexandreDeMoura/auxilia/issues/176) ([#178](https://github.com/AlexandreDeMoura/auxilia/issues/178)) ([efc35d6](https://github.com/AlexandreDeMoura/auxilia/commit/efc35d69eea28ac3a1f8dca0650010b6bcd06500))
+* **agents:** bound Redis run memory and retry structured-output forma… ([#193](https://github.com/AlexandreDeMoura/auxilia/issues/193)) ([35e00d0](https://github.com/AlexandreDeMoura/auxilia/commit/35e00d0ff58818abc4a07f7c505f1c489fa8db64))
+* **agents:** gate runs on unauthorized subagent MCP OAuth before launch ([#203](https://github.com/AlexandreDeMoura/auxilia/issues/203)) ([d82cb75](https://github.com/AlexandreDeMoura/auxilia/commit/d82cb7571877ae5898a54f533f8f64e4425e1fb1))
+* **agents:** validate structured output instead of returning empty results ([#179](https://github.com/AlexandreDeMoura/auxilia/issues/179)) ([ea59e38](https://github.com/AlexandreDeMoura/auxilia/commit/ea59e386b20ac9bc9cf27b8894584ebd56a2a21a))
+* **db:** Better handling connection ([#198](https://github.com/AlexandreDeMoura/auxilia/issues/198)) ([eeb08e1](https://github.com/AlexandreDeMoura/auxilia/commit/eeb08e18d6ca8c7fbbf759d7e9acd1ac09484ebb))
+* defer sandbox imports to avoid crash when opensandbox is not installed ([ef986b4](https://github.com/AlexandreDeMoura/auxilia/commit/ef986b4d24b46b95c290389126bc5275b31700ac))
+* lint ([bbd9ab3](https://github.com/AlexandreDeMoura/auxilia/commit/bbd9ab3f69199c336e29ce0997ac5a385c8e8188))
+* lint ([#132](https://github.com/AlexandreDeMoura/auxilia/issues/132)) ([9b5d502](https://github.com/AlexandreDeMoura/auxilia/commit/9b5d5026224659d2a4707659235286428f7daa72))
+* **mcp:** pass MCP server id as str to OAuth token storage ([#201](https://github.com/AlexandreDeMoura/auxilia/issues/201)) ([376260e](https://github.com/AlexandreDeMoura/auxilia/commit/376260e415651d098d0930e38c2144d5db2f8687))
+* **mcp:** persist OAuth tokens after authorization-code grant ([#141](https://github.com/AlexandreDeMoura/auxilia/issues/141)) ([65c8029](https://github.com/AlexandreDeMoura/auxilia/commit/65c8029b1d640b4ac6e38eb0603f77bd2c468e9e))
+* **mcp:** render Metabase interactive visualize_query MCP App ([#128](https://github.com/AlexandreDeMoura/auxilia/issues/128)) ([2bbc28c](https://github.com/AlexandreDeMoura/auxilia/commit/2bbc28c8ac9febaf291f7d35e52227df49347ed2))
+* **mcp:** request client_secret_post at dynamic client registration ([#206](https://github.com/AlexandreDeMoura/auxilia/issues/206)) ([a7e2248](https://github.com/AlexandreDeMoura/auxilia/commit/a7e224811de30f79510cb35ce45d05bc590ac095))
+* preserve subagents when parent agent has code execution ([#95](https://github.com/AlexandreDeMoura/auxilia/issues/95)) ([ed9ef3b](https://github.com/AlexandreDeMoura/auxilia/commit/ed9ef3b07b18c4747f8b3d49bede0e747c130f1d))
+* remove client setup for DCR official MCP servers ([92aa1d2](https://github.com/AlexandreDeMoura/auxilia/commit/92aa1d28e494e199ff9435e8e33b4576add9ba36))
+* **runs:** lower Redis run retention default from 24h to 1h ([#177](https://github.com/AlexandreDeMoura/auxilia/issues/177)) ([0171b50](https://github.com/AlexandreDeMoura/auxilia/commit/0171b50f0a931e61e41cbd884a2eed2d5f935e6e))
+* scope HITL decisions to hanging tool calls only ([#93](https://github.com/AlexandreDeMoura/auxilia/issues/93)) ([5675fec](https://github.com/AlexandreDeMoura/auxilia/commit/5675fececc2b3fd8f0aece8b591b5f9a365d9fae))
+* **slack:** de-duplicate HITL tool header; keep quote bar on multi-line args ([#165](https://github.com/AlexandreDeMoura/auxilia/issues/165)) ([b1500bf](https://github.com/AlexandreDeMoura/auxilia/commit/b1500bf870842ca8ef31c3b271cf94605a235d50))
+* **slack:** durable-delivery follow-ups (tool output, errors, HITL header) ([#163](https://github.com/AlexandreDeMoura/auxilia/issues/163)) ([4e8b6fd](https://github.com/AlexandreDeMoura/auxilia/commit/4e8b6fdc004537e71adbc5680db1af33fe516728))
+* surface GraphRecursionError as a resumable AI message ([#97](https://github.com/AlexandreDeMoura/auxilia/issues/97)) ([00fcbe9](https://github.com/AlexandreDeMoura/auxilia/commit/00fcbe96a7ab0b1455f0a7e98ffd5eb5fa5d5299))
+* **threads:** restrict rename endpoint to title only ([#158](https://github.com/AlexandreDeMoura/auxilia/issues/158)) ([9183619](https://github.com/AlexandreDeMoura/auxilia/commit/9183619167f371962997f04b349cdd8f8ed03a8f))
+* **web:** surface real tool error text; refactor(agents): collapse agent construction ([#144](https://github.com/AlexandreDeMoura/auxilia/issues/144)) ([e7fdc8e](https://github.com/AlexandreDeMoura/auxilia/commit/e7fdc8e0b82fcb0d52cf8b3c62bd02b4c5e0084e))
+
+
+### Code Refactoring
+
+* **agents:** drop custom MCP tool-error wrapping for native handling ([#122](https://github.com/AlexandreDeMoura/auxilia/issues/122)) ([fc52af4](https://github.com/AlexandreDeMoura/auxilia/commit/fc52af4feca37f8ad8fd50d5d5c74b4a60bb3cc9))
+* enforce CONVENTIONS.md naming across backend + frontend ([#100](https://github.com/AlexandreDeMoura/auxilia/issues/100)) ([f3af7c2](https://github.com/AlexandreDeMoura/auxilia/commit/f3af7c2159aa8fc83e47bc34e41f1a3367c9f00f))
+* extract shared helpers in runtime, stream, and Slack paths ([#98](https://github.com/AlexandreDeMoura/auxilia/issues/98)) ([7ea023c](https://github.com/AlexandreDeMoura/auxilia/commit/7ea023c42f98297ae693149f93bbc03fd60f7a3d))
+* **mcp:** tighten WebOAuthClientProvider toward the SDK ([#139](https://github.com/AlexandreDeMoura/auxilia/issues/139)) ([0d8a037](https://github.com/AlexandreDeMoura/auxilia/commit/0d8a037b69b86dc1f9b34b1584949e3787a6d6ce))
+* rename binding association tables and simplify naming ([#67](https://github.com/AlexandreDeMoura/auxilia/issues/67)) ([dfab494](https://github.com/AlexandreDeMoura/auxilia/commit/dfab49435fd9fb8490263762224ba9b3875d2bac))
+
 ## [0.4.21](https://github.com/keurcien/auxilia/compare/backend-v0.4.20...backend-v0.4.21) (2026-07-11)
 
 
