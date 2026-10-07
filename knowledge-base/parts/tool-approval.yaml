@@ -1,0 +1,33 @@
+name: Tool approval
+is: Stops the agent before it runs a tool marked "needs approval", shows the Member what is waiting with Approve and Deny buttons, and checks the answer before letting the agent continue.
+anchors:
+  - label: The tool step and its buttons
+    at: web/src/app/(protected)/agents/[id]/chat/[threadId]/tool-step.tsx#ToolStep
+    side: screen
+  - label: The NEEDS APPROVAL badge
+    at: web/src/components/ai-elements/chain-of-thought.tsx#NeedsApprovalBadge
+    side: screen
+  - label: Deciding which state a tool step is in
+    at: web/src/lib/transcript/tool-calls.ts#getToolStepState
+    side: screen
+  - label: Collecting one decision per waiting call and sending them once
+    at: web/src/hooks/use-hitl-approvals.ts#useHitlApprovals
+    side: screen
+  - label: Where the gate is put into every agent
+    at: backend/app/runtime/agent.py#build_agent_middleware
+    side: backend
+  - label: How the tools that need approval are worked out from the agent's settings
+    at: backend/app/runtime/toolset.py#Toolset.prepare
+    side: backend
+  - label: The three settings a tool can have
+    at: backend/app/agents/models.py#ToolStatus
+    side: backend
+  - label: Reading what a paused thread is waiting on
+    at: backend/app/runtime/hitl.py#pending_approval_requests
+    side: backend
+  - label: Checking the decisions and turning them into the command that continues the agent
+    at: backend/app/runtime/hitl.py#build_resume_command
+    side: backend
+  - label: The refusal given when the request was already answered
+    at: backend/app/exceptions.py#StaleApprovalError
+    side: backend

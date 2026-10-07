@@ -1,0 +1,18 @@
+name: Run queue
+is: Records every piece of agent work as a Run, allows one at a time per thread, and has background workers pick them up, execute them and stamp how they ended.
+anchors:
+  - label: Queueing a run
+    at: backend/app/runtime/runs/service.py#RunService.create
+    side: backend
+  - label: The loop that hands queued runs to workers
+    at: backend/app/runtime/runs/worker.py#RunDispatcher
+    side: backend
+  - label: Executing one run and deciding how it ended
+    at: backend/app/runtime/runs/worker.py#RunWorker._execute
+    side: backend
+  - label: The statuses a run can have
+    at: backend/app/runtime/runs/state.py#RunStatus
+    side: backend
+  - label: Cleaning up runs whose worker died
+    at: backend/app/runtime/runs/reaper.py#RunReaper
+    side: backend

@@ -1,0 +1,12 @@
+name: Chat commands
+is: The single door through which the chat page tells the backend to do something on a thread, such as start a run or answer a request for approval.
+anchors:
+  - label: The endpoint
+    at: backend/app/runtime/api/protocol_router.py#post_command
+    side: backend
+  - label: Turning an answer into a run that continues the agent
+    at: backend/app/runtime/api/protocol_service.py#ProtocolService._input_respond
+    side: backend
+  - label: How the browser reaches it
+    at: web/src/lib/api/protocol.ts#protocolFetch
+    side: screen

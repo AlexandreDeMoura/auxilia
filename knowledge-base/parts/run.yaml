@@ -1,0 +1,10 @@
+name: Run
+entity: true
+is: One piece of agent work on a thread, either answering a new message or continuing after a decision, with how it ended.
+relations:
+  - belongs to one thread
+  - belongs to one user
+anchors:
+  - label: The stored record
+    at: backend/app/runtime/runs/models.py#RunDB
+    side: backend

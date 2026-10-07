@@ -1,0 +1,92 @@
+name: Approve a tool call
+actor: member
+goal: Let the agent run a tool that was marked "needs approval", after seeing what it is about to do.
+trigger: While the Member watches a reply, the agent decides to call a tool marked "needs approval".
+outcome: The tool has run with the parameters the Member saw, and the agent has finished its reply using the result.
+
+preconditions:
+  - The Member is signed in.
+  - flow_to_write: agents/require-approval-for-a-tool
+    so_that: At least one tool of the agent is marked "needs approval".
+  - flow_to_write: chat/start-a-thread
+    so_that: A thread with that agent is open and a reply is in progress.
+
+steps:
+  - id: pause
+    sees: The reply stops growing. The last item on the agent's chain of steps is the tool it wants to call.
+    system: Before running the tool, the agent stops and saves the pending call in the thread's saved state. Nothing has been executed.
+    parts: [tool-approval]
+
+  - id: ask
+    sees: The tool step opens by itself and cannot be collapsed. It shows a "NEEDS APPROVAL" badge, the PARAMETERS the tool would be called with, and two buttons, Approve and Deny.
+    system: The run ends with status "interrupted" and the request for a decision is sent to the browser. It is also kept, so reloading the page shows the same step again.
+    parts: [run-queue, run-event-stream, thread-session, tool-approval]
+
+  - id: decide
+    does: Clicks Approve.
+    sees: Both buttons lock; Deny fades.
+    system: The browser keeps the decision. Once every tool call waiting in the same turn has one, it sends them together, once, naming the request they answer.
+    parts: [tool-approval, thread-session]
+
+  - id: accept
+    system: The backend checks that the Member owns the thread, that the agent's connected servers are still authorised, and that the decisions match exactly the calls that are waiting. It then queues a new run that carries the decisions.
+    parts: [chat-commands, tool-approval, run-queue, run]
+
+  - id: run-tool
+    sees: The badge turns into a spinner.
+    system: A worker picks up the queued run, rebuilds the agent and continues it from where it stopped. The tool is called.
+    parts: [run-queue, agent-runtime]
+
+  - id: finish
+    sees: A RESULT section appears under the tool step, then the reply continues to its end. A short sound plays.
+    system: The tool's result and the rest of the reply are streamed to the browser. The run ends with status "success".
+    parts: [run-event-stream, run-queue, thread-session]
+
+qa:
+  setup:
+    - Sign in as a Member.
+    - Pick an agent that has a server attached, and set one of its tools to "needs approval".
+    - Open a new chat with that agent.
+  steps:
+    - do: Send a message that asks for something only that tool can do.
+      expect: The reply stops and a tool step opens with a "NEEDS APPROVAL" badge, its PARAMETERS, and Approve and Deny buttons.
+    - do: Reload the page.
+      expect: The same tool step is still there, still waiting.
+    - do: Click Approve.
+      expect: Both buttons lock, then the badge becomes a spinner.
+    - do: Wait.
+      expect: A RESULT section appears under the tool step and the agent finishes its reply.
+
+variants:
+  - id: deny
+    name: The Member denies the call
+    diverges_at: decide
+    when: The Member clicks Deny instead of Approve.
+    outcome: The tool was never run, and the agent has replied knowing it was refused.
+    steps:
+      - id: decide
+        does: Clicks Deny.
+        sees: Both buttons lock; Approve fades.
+        system: The browser sends the refusal the same way it sends an approval.
+        parts: [tool-approval, thread-session]
+      - id: accept
+        system: The backend runs the same checks as for an approval and queues a new run that carries the refusal.
+        parts: [chat-commands, tool-approval, run-queue, run]
+      - id: refuse
+        sees: The tool step shows a "denied" icon and a DENIED section reading "Denied by the user — the tool was not executed."
+        system: The agent continues, but instead of calling the tool it is handed a note saying the call was refused.
+        parts: [run-queue, agent-runtime, tool-approval, run-event-stream]
+      - id: finish
+        sees: The agent replies without the tool's result.
+        system: The rest of the reply is streamed. The run ends with status "success".
+        parts: [run-event-stream, run-queue, thread-session]
+    qa:
+      setup:
+        - Same as the main path, up to the tool step waiting for a decision.
+      steps:
+        - do: Click Deny.
+          expect: Both buttons lock and Approve fades.
+        - do: Wait.
+          expect: The tool step shows DENIED with "Denied by the user — the tool was not executed.", and no RESULT section.
+        - do: Read the agent's reply.
+          expect: It carries on without the tool's result.

@@ -1,0 +1,15 @@
+name: Run event stream
+is: Turns what the agent does into a sequence of events, keeps them for a while, and delivers them to the browser, including to a page that opens late.
+anchors:
+  - label: Translating the agent's activity into events
+    at: backend/app/runtime/protocol/emit.py#ProtocolEmitter
+    side: backend
+  - label: The stored log of one run's events
+    at: backend/app/runtime/runs/events.py#RunEventStream
+    side: backend
+  - label: The endpoint the browser listens on
+    at: backend/app/runtime/api/protocol_router.py#stream_events
+    side: backend
+  - label: The snapshot a freshly opened page starts from
+    at: backend/app/runtime/api/protocol_service.py#ProtocolService.thread_state
+    side: backend

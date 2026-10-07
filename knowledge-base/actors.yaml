@@ -1,0 +1,7 @@
+# Who or what starts Flows from outside the system. Short, no Anchors.
+member:
+  name: Member
+  is: A signed-in person who chats with the agents shared with them.
+slack-user:
+  name: Slack user
+  is: A person who talks to an agent from Slack instead of the web app.

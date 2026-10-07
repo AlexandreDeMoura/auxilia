@@ -1,0 +1,15 @@
+name: Thread session
+is: Keeps the chat page in step with one thread, namely the messages, whether a run is going, what is waiting for a decision, and the actions the Member can take.
+anchors:
+  - label: The session the chat page is built on
+    at: web/src/lib/thread-session/use-thread-session.ts#useThreadSession
+    side: screen
+  - label: The chat page
+    at: web/src/app/(protected)/agents/[id]/chat/[threadId]/page.tsx#ChatPage
+    side: screen
+  - label: Telling requests on the main agent from requests inside a subagent
+    at: web/src/lib/transcript/interrupts.ts#splitInterrupts
+    side: screen
+  - label: Recognising a refused command, such as a late decision
+    at: web/src/lib/api/protocol.ts#decodeProtocolRejection
+    side: screen

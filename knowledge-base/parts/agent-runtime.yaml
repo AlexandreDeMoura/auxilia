@@ -1,0 +1,12 @@
+name: Agent runtime
+is: Builds a working agent from its saved configuration and runs it, either on a new message or from the point where it stopped.
+anchors:
+  - label: Building the agent for a thread
+    at: backend/app/runtime/agent.py#Agent.build
+    side: backend
+  - label: Running it and yielding what it does
+    at: backend/app/runtime/agent.py#Agent.stream
+    side: backend
+  - label: Choosing between a new message and continuing after a decision
+    at: backend/app/runtime/agent.py#Agent._resolve_input
+    side: backend

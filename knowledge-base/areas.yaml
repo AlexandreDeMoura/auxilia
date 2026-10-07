@@ -1,0 +1,4 @@
+# One level only. A Flow's Area is the directory it sits in under flows/.
+chat:
+  name: Chat
+  is: Talking to an agent in a thread and steering what it does while it works.
