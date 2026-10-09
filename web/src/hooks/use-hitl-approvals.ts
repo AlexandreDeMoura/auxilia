@@ -1,6 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type HitlDecision = "approve" | "reject";
+
+/** How long a pending approval waits for the user before it is denied. */
+export const HITL_AUTO_REJECT_MS = 5000;
+
+/** The running auto-deny countdown: `key` changes each time it restarts. */
+export type HitlAutoReject = { afterMs: number; key: string };
 
 /**
  * The `input.respond` payload. Addressed form (interrupt id + decisions keyed
@@ -24,17 +30,23 @@ type UseHitlApprovalsArgs<TPending extends { id: string }> = {
 	/** Hold a complete batch until this is true (e.g. another resume is in
 	 *  flight — the thread accepts one run at a time). Default: send at once. */
 	enabled?: boolean;
+	/** Deny the calls still undecided after this long without a decision from
+	 *  the user; `null` waits forever (e.g. the approval cannot be answered). */
+	autoRejectAfterMs?: number | null;
 };
 
 /**
  * Collects one approve/reject decision per pending tool call and, once the
- * batch is complete, resumes the interrupted run exactly once.
+ * batch is complete, resumes the interrupted run exactly once. Calls the user
+ * leaves undecided are denied after `autoRejectAfterMs`; every decision the
+ * user makes restarts that countdown for the calls still waiting.
  */
 export function useHitlApprovals<TPending extends { id: string }>({
 	interruptId,
 	pendingToolCalls,
 	respond,
 	enabled = true,
+	autoRejectAfterMs = HITL_AUTO_REJECT_MS,
 }: UseHitlApprovalsArgs<TPending>) {
 	const [decisions, setDecisions] = useState<Record<string, HitlDecision>>({});
 	const submittedBatch = useRef<string | null>(null);
@@ -60,6 +72,33 @@ export function useHitlApprovals<TPending extends { id: string }>({
 		);
 	}, [enabled, interruptId, pendingToolCalls, decisions, respond]);
 
+	const undecidedKey = pendingToolCalls
+		.filter((tc) => !decisions[tc.id])
+		.map((tc) => tc.id)
+		.join("|");
+	const autoReject = useMemo<HitlAutoReject | null>(
+		() =>
+			autoRejectAfterMs == null || undecidedKey === ""
+				? null
+				: { afterMs: autoRejectAfterMs, key: undecidedKey },
+		[autoRejectAfterMs, undecidedKey],
+	);
+
+	useEffect(() => {
+		if (autoReject == null) return;
+		const undecided = autoReject.key.split("|");
+		const timer = setTimeout(() => {
+			setDecisions((prev) => {
+				const next = { ...prev };
+				for (const id of undecided) next[id] ??= "reject";
+				return next;
+			});
+		}, autoReject.afterMs);
+		return () => {
+			clearTimeout(timer);
+		};
+	}, [autoReject]);
+
 	const recordDecision = useCallback(
 		(toolCallId: string, type: HitlDecision) => {
 			setDecisions((prev) => ({ ...prev, [toolCallId]: type }));
@@ -67,5 +106,5 @@ export function useHitlApprovals<TPending extends { id: string }>({
 		[],
 	);
 
-	return { decisions, recordDecision };
+	return { decisions, recordDecision, autoReject };
 }

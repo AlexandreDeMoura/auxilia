@@ -17,6 +17,8 @@ import {
   StepSection,
 } from "@/components/ai-elements/chain-of-thought";
 import {
+  HITL_AUTO_REJECT_MS,
+  type HitlAutoReject,
   type HitlDecision,
   type HitlResponse,
   useHitlApprovals,
@@ -57,6 +59,7 @@ const SubAgentConversation = memo(function SubAgentConversation({
   hitlToolNames,
   decisions,
   recordDecision,
+  autoReject,
   approvalsDisabled,
 }: {
   messages: BaseMessage[];
@@ -68,6 +71,7 @@ const SubAgentConversation = memo(function SubAgentConversation({
   hitlToolNames: Set<string> | null;
   decisions: Partial<Record<string, HitlDecision>>;
   recordDecision: (toolCallId: string, decision: HitlDecision) => void;
+  autoReject: HitlAutoReject | null;
   approvalsDisabled: boolean;
 }) {
   const byMessage = new Map<string, ToolCallView[]>();
@@ -105,6 +109,7 @@ const SubAgentConversation = memo(function SubAgentConversation({
                       ? {
                           decided: decisions[tc.id],
                           disabled: approvalsDisabled,
+                          autoReject,
                           onDecide: (decision) => {
                             recordDecision(tc.id, decision);
                           },
@@ -189,11 +194,12 @@ export const SubAgentCard = memo(function SubAgentCard({
   // Parallel subagents can pause together, each with its own interrupt;
   // the thread runs one resume at a time, so a completed batch waits for
   // the run in flight to settle and is sent when its interrupt still pends.
-  const { decisions, recordDecision } = useHitlApprovals({
+  const { decisions, recordDecision, autoReject } = useHitlApprovals({
     interruptId: pendingIdsAreReal ? (interrupt?.id ?? null) : null,
     pendingToolCalls,
     respond,
     enabled: !resumeInFlight,
+    autoRejectAfterMs: modelUnavailable ? null : HITL_AUTO_REJECT_MS,
   });
   const awaitingDecision = pendingToolCalls.some((tc) => !decisions[tc.id]);
 
@@ -260,6 +266,7 @@ export const SubAgentCard = memo(function SubAgentCard({
           hitlToolNames={hitlToolNames}
           decisions={decisions}
           recordDecision={recordDecision}
+          autoReject={autoReject}
           approvalsDisabled={modelUnavailable}
         />
         {isError && subagent.error != null && (

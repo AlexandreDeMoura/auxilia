@@ -9,7 +9,13 @@ import type { Interrupt } from "@langchain/langgraph-sdk";
 
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
 import type { Todo } from "@/components/ai-elements/todo-list";
-import { type HitlDecision, type HitlResponse, useHitlApprovals } from "@/hooks/use-hitl-approvals";
+import {
+	HITL_AUTO_REJECT_MS,
+	type HitlAutoReject,
+	type HitlDecision,
+	type HitlResponse,
+	useHitlApprovals,
+} from "@/hooks/use-hitl-approvals";
 import { useProtocolFetch } from "@/hooks/use-protocol-fetch";
 import { useThrottledValue } from "@/hooks/use-throttled-value";
 import { protocolApiUrl } from "@/lib/api/protocol";
@@ -96,6 +102,9 @@ export type ThreadSession = {
 		pendingToolCalls: ToolCallView[];
 		decisions: Record<string, HitlDecision>;
 		recordDecision: (toolCallId: string, decision: HitlDecision) => void;
+		/** The countdown after which undecided calls are denied; null when
+		 *  nothing is waiting on the user. */
+		autoReject: HitlAutoReject | null;
 	};
 	actions: {
 		send: (message: PromptInputMessage) => void;
@@ -270,10 +279,12 @@ export function useThreadSession({
 		[toolCalls, isInterrupted, hitlToolNames],
 	);
 	const pendingIdsAreReal = pendingToolCalls.every((tc) => tc.callId != null);
-	const { decisions, recordDecision } = useHitlApprovals({
+	const { decisions, recordDecision, autoReject } = useHitlApprovals({
 		interruptId: pendingIdsAreReal ? (interrupt?.id ?? null) : null,
 		pendingToolCalls,
 		respond,
+		// With no model to resume on, the approval cannot be answered at all.
+		autoRejectAfterMs: state.meta.modelAvailable ? HITL_AUTO_REJECT_MS : null,
 	});
 
 	// --- open the thread ------------------------------------------------------
@@ -366,6 +377,7 @@ export function useThreadSession({
 			pendingToolCalls,
 			decisions,
 			recordDecision,
+			autoReject,
 		},
 		actions: { send, regenerate, stop, respond, recheckModel, recheckSandbox, reopen },
 	};

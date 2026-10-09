@@ -18,14 +18,14 @@ steps:
     parts: [tool-approval]
 
   - id: ask
-    sees: The tool step opens by itself and cannot be collapsed. It shows a "NEEDS APPROVAL" badge, the PARAMETERS the tool would be called with, and two buttons, Approve and Deny.
-    system: The run ends with status "interrupted" and the request for a decision is sent to the browser. It is also kept, so reloading the page shows the same step again.
+    sees: The tool step opens by itself and cannot be collapsed. It shows a "NEEDS APPROVAL" badge, the PARAMETERS the tool would be called with, and two buttons, Approve and Deny. Next to the buttons a small bar drains over 5 seconds, beside the words "Denied automatically after 5s".
+    system: The run ends with status "interrupted" and the request for a decision is sent to the browser. It is also kept, so reloading the page shows the same step again. The browser starts a 5-second countdown as soon as it shows the step.
     parts: [run-queue, run-event-stream, thread-session, tool-approval]
 
   - id: decide
-    does: Clicks Approve.
-    sees: Both buttons lock; Deny fades.
-    system: The browser keeps the decision. Once every tool call waiting in the same turn has one, it sends them together, once, naming the request they answer.
+    does: Clicks Approve before the bar has drained.
+    sees: Both buttons lock; Deny fades. The bar disappears.
+    system: The browser keeps the decision. Once every tool call waiting in the same turn has one, it sends them together, once, naming the request they answer. If other calls of the same turn are still waiting, their countdown starts again from 5 seconds.
     parts: [tool-approval, thread-session]
 
   - id: accept
@@ -49,11 +49,9 @@ qa:
     - Open a new chat with that agent.
   steps:
     - do: Send a message that asks for something only that tool can do.
-      expect: The reply stops and a tool step opens with a "NEEDS APPROVAL" badge, its PARAMETERS, and Approve and Deny buttons.
-    - do: Reload the page.
-      expect: The same tool step is still there, still waiting.
-    - do: Click Approve.
-      expect: Both buttons lock, then the badge becomes a spinner.
+      expect: The reply stops and a tool step opens with a "NEEDS APPROVAL" badge, its PARAMETERS, Approve and Deny buttons, and a draining bar beside "Denied automatically after 5s".
+    - do: Within 5 seconds, click Approve.
+      expect: Both buttons lock and the bar disappears, then the badge becomes a spinner.
     - do: Wait.
       expect: A RESULT section appears under the tool step and the agent finishes its reply.
 
@@ -61,19 +59,19 @@ variants:
   - id: deny
     name: The Member denies the call
     diverges_at: decide
-    when: The Member clicks Deny instead of Approve.
+    when: The Member clicks Deny instead of Approve, before the bar has drained.
     outcome: The tool was never run, and the agent has replied knowing it was refused.
     steps:
       - id: decide
         does: Clicks Deny.
-        sees: Both buttons lock; Approve fades.
+        sees: Both buttons lock; Approve fades. The bar disappears.
         system: The browser sends the refusal the same way it sends an approval.
         parts: [tool-approval, thread-session]
       - id: accept
         system: The backend runs the same checks as for an approval and queues a new run that carries the refusal.
         parts: [chat-commands, tool-approval, run-queue, run]
       - id: refuse
-        sees: The tool step shows a "denied" icon and a DENIED section reading "Denied by the user — the tool was not executed."
+        sees: The tool step shows a "denied" icon and a DENIED section reading "Denied — the tool was not executed."
         system: The agent continues, but instead of calling the tool it is handed a note saying the call was refused.
         parts: [run-queue, agent-runtime, tool-approval, run-event-stream]
       - id: finish
@@ -84,9 +82,41 @@ variants:
       setup:
         - Same as the main path, up to the tool step waiting for a decision.
       steps:
-        - do: Click Deny.
+        - do: Within 5 seconds, click Deny.
           expect: Both buttons lock and Approve fades.
         - do: Wait.
-          expect: The tool step shows DENIED with "Denied by the user — the tool was not executed.", and no RESULT section.
+          expect: The tool step shows DENIED with "Denied — the tool was not executed.", and no RESULT section.
+        - do: Read the agent's reply.
+          expect: It carries on without the tool's result.
+
+  - id: no-answer
+    name: The Member does not answer in time
+    diverges_at: decide
+    when: The Member clicks neither button for 5 seconds while the chat page is open.
+    outcome: The tool was never run, and the agent has replied knowing it was refused.
+    steps:
+      - id: decide
+        sees: The bar drains to empty. Both buttons lock; Approve fades.
+        system: The browser records a refusal for every call of the turn that is still unanswered, keeps the answers the Member already gave, and sends them together the same way it sends a clicked decision. Nothing counts down while the page is closed; the 5 seconds start again each time the page shows the waiting step. There is no countdown when the thread's model is unavailable.
+        parts: [tool-approval, thread-session]
+      - id: accept
+        system: The backend runs the same checks as for an approval and queues a new run that carries the refusal.
+        parts: [chat-commands, tool-approval, run-queue, run]
+      - id: refuse
+        sees: The tool step shows a "denied" icon and a DENIED section reading "Denied — the tool was not executed."
+        system: The agent continues, but instead of calling the tool it is handed a note saying the call was refused.
+        parts: [run-queue, agent-runtime, tool-approval, run-event-stream]
+      - id: finish
+        sees: The agent replies without the tool's result.
+        system: The rest of the reply is streamed. The run ends with status "success".
+        parts: [run-event-stream, run-queue, thread-session]
+    qa:
+      setup:
+        - Same as the main path, up to the tool step waiting for a decision.
+      steps:
+        - do: Click nothing and watch the bar for 5 seconds.
+          expect: The bar drains, then both buttons lock and Approve fades.
+        - do: Wait.
+          expect: The tool step shows DENIED with "Denied — the tool was not executed.", and no RESULT section.
         - do: Read the agent's reply.
           expect: It carries on without the tool's result.

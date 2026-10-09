@@ -43,7 +43,11 @@ import { TodoList } from "@/components/ai-elements/todo-list";
 import type { Todo } from "@/components/ai-elements/todo-list";
 import { useMcpServersStore } from "@/stores/mcp-servers-store";
 import { useAgentsStore } from "@/stores/agents-store";
-import type { HitlDecision, HitlResponse } from "@/hooks/use-hitl-approvals";
+import type {
+  HitlAutoReject,
+  HitlDecision,
+  HitlResponse,
+} from "@/hooks/use-hitl-approvals";
 import { McpAppWidget } from "../components/mcp-app-widget";
 import {
   type ChainStepData,
@@ -80,6 +84,7 @@ export type ConversationBodyProps = {
   hitlToolNames: Set<string> | null;
   decisions: Partial<Record<string, HitlDecision>>;
   recordDecision: (toolCallId: string, decision: HitlDecision) => void;
+  autoReject: HitlAutoReject | null;
   /** Interrupts raised inside subagents (`stream.interrupts` minus the root
    *  one); each card claims its own and approves it itself. */
   nestedInterrupts: Interrupt[];
@@ -107,6 +112,7 @@ export const ConversationBody = memo(function ConversationBody({
   hitlToolNames,
   decisions,
   recordDecision,
+  autoReject,
   nestedInterrupts,
   respond,
   modelUnavailable,
@@ -190,6 +196,7 @@ export const ConversationBody = memo(function ConversationBody({
                 hitlToolNames={hitlToolNames}
                 decisions={decisions}
                 recordDecision={recordDecision}
+                autoReject={autoReject}
                 nestedInterrupts={nestedInterrupts}
                 respond={respond}
                 resumeInFlight={isLoading}
@@ -341,6 +348,7 @@ type ChainProps = {
   hitlToolNames: Set<string> | null;
   decisions: Partial<Record<string, HitlDecision>>;
   recordDecision: (toolCallId: string, decision: HitlDecision) => void;
+  autoReject: HitlAutoReject | null;
   nestedInterrupts: Interrupt[];
   respond: (response: HitlResponse, interruptId: string | null) => void;
   /** A run is executing: a card's approval waits for it to settle. */
@@ -375,6 +383,7 @@ const Chain = ({
   hitlToolNames,
   decisions,
   recordDecision,
+  autoReject,
   nestedInterrupts,
   respond,
   resumeInFlight,
@@ -460,6 +469,7 @@ const Chain = ({
                   ? {
                       decided: decisions[tc.id],
                       disabled: modelUnavailable,
+                      autoReject,
                       onDecide: (decision) => {
                         recordDecision(tc.id, decision);
                       },

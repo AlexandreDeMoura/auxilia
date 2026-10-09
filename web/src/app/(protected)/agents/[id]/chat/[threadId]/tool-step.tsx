@@ -17,7 +17,7 @@ import {
 } from "@/components/ai-elements/chain-of-thought";
 import { cn } from "@/lib/utils";
 import { fetchThreadMessage } from "@/lib/api/thread-messages";
-import type { HitlDecision } from "@/hooks/use-hitl-approvals";
+import type { HitlAutoReject, HitlDecision } from "@/hooks/use-hitl-approvals";
 import {
   type ToolCallView,
   type ToolStepState,
@@ -57,6 +57,8 @@ export function useDescribeTool(
 type ToolStepApproval = {
   decided: HitlDecision | undefined;
   disabled: boolean;
+  /** The countdown after which an undecided call is denied, if one runs. */
+  autoReject?: HitlAutoReject | null;
   onDecide: (decision: HitlDecision) => void;
 };
 
@@ -114,7 +116,7 @@ export const ToolStep = memo(function ToolStep({
           )}
           {state === "rejected" ? (
             <StepSection label="DENIED">
-              <StepCode value="Denied by the user — the tool was not executed." />
+              <StepCode value="Denied — the tool was not executed." />
             </StepSection>
           ) : state === "error" ? (
             <StepSection label="ERROR" error>
@@ -143,6 +145,9 @@ export const ToolStep = memo(function ToolStep({
           >
             Deny
           </ApprovalButton>
+          {approval.decided == null && approval.autoReject != null && (
+            <AutoDenyCountdown autoReject={approval.autoReject} />
+          )}
         </div>
           )}
         </>
@@ -247,6 +252,23 @@ const formatChars = (n: number): string =>
     : n >= 1_000
       ? `${Math.round(n / 1_000)} K chars`
       : `${n} chars`;
+
+/** The auto-deny countdown, as a bar that drains over the delay. Keyed by the
+ *  countdown so a restart (another call of the batch was decided) refills it. */
+const AutoDenyCountdown = ({ autoReject }: { autoReject: HitlAutoReject }) => (
+  <span className="flex items-center gap-2 text-[11.5px] text-meta dark:text-panel-dim">
+    <span className="h-[3px] w-10 overflow-hidden rounded-full bg-warning-bg">
+      <span
+        key={autoReject.key}
+        className="block h-full origin-left bg-warning"
+        style={{
+          animation: `hitl-countdown ${autoReject.afterMs}ms linear forwards`,
+        }}
+      />
+    </span>
+    Denied automatically after {Math.round(autoReject.afterMs / 1000)}s
+  </span>
+);
 
 const ApprovalButton = ({
   approval,

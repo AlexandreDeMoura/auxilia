@@ -332,6 +332,15 @@
 	}
 }
 
+@keyframes hitl-countdown {
+	from {
+		transform: scaleX(1);
+	}
+	to {
+		transform: scaleX(0);
+	}
+}
+
 @keyframes pulse-dot {
 	0%,
 	100% {

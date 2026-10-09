@@ -540,3 +540,5 @@ rtk init --global       # Add RTK to ~/.claude/CLAUDE.md
 Overall average: **60-90% token reduction** on common development operations.
 
 <!-- /rtk-instructions -->
+
+`knowledge-base/` describes this app for the person who ships it without reading the code. After changing code, follow the `maintain-knowledge-base` skill, then run `npx kb-skeleton check` in `web/` and fix what it reports before you stop. <!-- kb-skeleton -->

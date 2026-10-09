@@ -84,6 +84,7 @@ const ChatPage = () => {
               hitlToolNames={hitl.hitlToolNames}
               decisions={hitl.decisions}
               recordDecision={hitl.recordDecision}
+              autoReject={hitl.autoReject}
               nestedInterrupts={hitl.nestedInterrupts}
               respond={actions.respond}
               modelUnavailable={!meta.modelAvailable}
