@@ -2,3 +2,14 @@
 chat:
   name: Chat
   is: Talking to an agent in a thread and steering what it does while it works.
+  flows_to_write:
+    start-a-thread:
+      name: Start a thread
+      is: A Member opens a thread with an agent and sends a first message, and the agent starts its reply.
+agents:
+  name: Agents
+  is: Setting up an agent and choosing which tools it can use and how.
+  flows_to_write:
+    require-approval-for-a-tool:
+      name: Require approval for a tool
+      is: Someone who manages an agent marks one of its tools as "needs approval", so the agent asks before running it.
