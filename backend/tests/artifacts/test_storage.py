@@ -1,17 +1,23 @@
 import io
 import os
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
 from botocore.exceptions import ClientError
 from botocore.response import StreamingBody
 from botocore.stub import Stubber
+from google.api_core.exceptions import NotFound, RequestRangeNotSatisfiable
 
 from app.artifacts.settings import ArtifactSettings
 from app.artifacts.storage import (
+    GCS_RETRY,
+    GCS_TIMEOUT,
+    GCSObjectStore,
     ObjectMissingError,
     ObjectTooLargeError,
     S3ObjectStore,
+    build_store,
 )
 
 
@@ -27,7 +33,7 @@ def test_portable_s3_operations(endpoint, region, style):
     store = S3ObjectStore(
         ArtifactSettings(
             _env_file=None,
-            s3_bucket="private",
+            bucket="private",
             s3_endpoint_url=endpoint,
             s3_region=region,
             s3_addressing_style=style,
@@ -69,7 +75,7 @@ def stub_store():
     return S3ObjectStore(
         ArtifactSettings(
             _env_file=None,
-            s3_bucket="private",
+            bucket="private",
             s3_access_key_id="test",
             s3_secret_access_key="test",
         )
@@ -96,6 +102,60 @@ def test_oversize_object_is_typed_and_missing_length_is_bounded():
             store.get("big", 4)
 
 
+@pytest.mark.parametrize(
+    "bucket,provider,name",
+    [
+        ("", None, ""),
+        ("private", "s3", "private"),
+        ("s3://private", "s3", "private"),
+        ("gs://private", "gcs", "private"),
+    ],
+)
+def test_provider_is_inferred_from_bucket(bucket, provider, name):
+    cfg = ArtifactSettings(_env_file=None, bucket=bucket)
+    assert (cfg.provider, cfg.bucket_name) == (provider, name)
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        {"s3_endpoint_url": "https://storage.googleapis.com"},
+        {"s3_access_key_id": "id", "s3_secret_access_key": "secret"},
+    ],
+)
+def test_gcs_bucket_rejects_s3_settings(extra):
+    with pytest.raises(ValueError, match="ADC"):
+        ArtifactSettings(_env_file=None, bucket="gs://private", **extra)
+
+
+def test_gcs_store(monkeypatch):
+    bucket = MagicMock()
+    client = MagicMock()
+    client.bucket.return_value = bucket
+    monkeypatch.setattr("app.artifacts.storage._gcs_client", lambda: client)
+    store = build_store(ArtifactSettings(_env_file=None, bucket="gs://private"))
+    assert isinstance(store, GCSObjectStore)
+    client.bucket.assert_called_once_with("private")
+    blob = bucket.blob.return_value
+    store.put("file", b"data", "text/plain")
+    blob.upload_from_string.assert_called_once_with(
+        b"data", content_type="text/plain", timeout=GCS_TIMEOUT
+    )
+    blob.download_as_bytes.return_value = b"data"
+    assert store.get("file", 4) == b"data"
+    blob.download_as_bytes.assert_called_once_with(
+        start=0, end=4, timeout=GCS_TIMEOUT, retry=GCS_RETRY
+    )
+    blob.download_as_bytes.return_value = b"01234"
+    with pytest.raises(ObjectTooLargeError):
+        store.get("file", 4)
+    blob.download_as_bytes.side_effect = NotFound("gone")
+    with pytest.raises(ObjectMissingError):
+        store.get("file", 4)
+    blob.download_as_bytes.side_effect = RequestRangeNotSatisfiable("empty")
+    assert store.get("file", 4) == b""
+
+
 def test_session_token_requires_static_credentials():
     with pytest.raises(ValueError, match="session token"):
         ArtifactSettings(_env_file=None, s3_session_token="token")
@@ -109,7 +169,7 @@ def test_minio_roundtrip():
     store = S3ObjectStore(
         ArtifactSettings(
             _env_file=None,
-            s3_bucket="auxilia-artifacts",
+            bucket="auxilia-artifacts",
             s3_endpoint_url=os.environ["ARTIFACT_TEST_S3_ENDPOINT"],
             s3_addressing_style="path",
             s3_access_key_id="auxilia-local",
