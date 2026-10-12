@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import type { CSSProperties, ReactNode, RefObject } from "react";
+import Image from "next/image";
 import { ChevronLeft, Download, FileText, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -20,7 +21,9 @@ import {
   contentUrl,
   listArtifacts,
   readArtifact,
+  slidesExportUrl,
 } from "@/lib/api/resources/artifacts";
+import { getAuthProviders } from "@/lib/api/resources/auth";
 import type { Artifact } from "@/lib/api/resources/artifacts";
 
 const ArtifactContext = createContext<{
@@ -121,6 +124,50 @@ function DownloadLink({ item, icon }: { item: Artifact; icon?: boolean }) {
     >
       <Download className="size-3.5" />
       Download
+    </a>
+  );
+}
+
+const PPTX_MIME =
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+
+// Export to Slides rides on the Google sign-in client, so it only exists when
+// the workspace has Google OAuth configured. Asked once per page load.
+let googleEnabled: Promise<boolean> | undefined;
+
+function useGoogleEnabled(): boolean {
+  const [enabled, setEnabled] = useState(false);
+  useEffect(() => {
+    googleEnabled ??= getAuthProviders()
+      .then((providers) => providers.google)
+      .catch(() => false);
+    void googleEnabled.then(setEnabled);
+  }, []);
+  return enabled;
+}
+
+function SlidesExportLink({ item }: { item: Artifact }) {
+  const enabled = useGoogleEnabled();
+  if (!enabled) return null;
+  return (
+    <a
+      href={slidesExportUrl(item)}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="Open a copy in Google Slides"
+      aria-label={`Open ${item.title} in Google Slides`}
+      className="inline-flex flex-none items-center gap-1.5 rounded-lg border border-hairline px-3.5 py-2 text-[13px] font-semibold text-ink hover:bg-hairline @max-[440px]/panel:px-2.5"
+    >
+      <Image
+        unoptimized
+        src="https://pub-7a6e8912b3c448b8a8bfa47a0363f7bc.r2.dev/assets/icons/slides.png"
+        alt=""
+        width={14}
+        height={14}
+        className="size-3.5 object-contain"
+      />
+      {/* Logo only on a narrow panel, so the header keeps its close button. */}
+      <span className="@max-[440px]/panel:hidden">Google Slides</span>
     </a>
   );
 }
@@ -410,6 +457,7 @@ export function ArtifactWorkspace({
                 <Button
                   variant="outline"
                   size="sm"
+                  className="h-[30px] rounded-full"
                   onClick={() => {
                     setAttempt((x) => x + 1);
                   }}
@@ -425,7 +473,7 @@ export function ArtifactWorkspace({
                     setSelected(undefined);
                     setListOpen(!showing);
                   }}
-                  className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-petrol-chip px-2.5 py-1.5 text-[12.5px] font-semibold text-petrol hover:bg-petrol-tint aria-pressed:ring-1 aria-pressed:ring-petrol/40"
+                  className="flex h-[30px] cursor-pointer items-center gap-1.5 rounded-full bg-petrol-chip px-3 text-[12.5px] font-semibold text-petrol hover:bg-petrol-tint aria-pressed:ring-1 aria-pressed:ring-petrol/40"
                 >
                   <FileText className="size-3.5" />
                   Files
@@ -442,7 +490,7 @@ export function ArtifactWorkspace({
             style={
               { "--panel-w": width ? `${width}px` : "50%" } as CSSProperties
             }
-            className="absolute inset-0 z-30 flex min-w-0 flex-col border-l border-hairline bg-background @min-[680px]/ws:relative @min-[680px]/ws:inset-auto @min-[680px]/ws:w-[var(--panel-w)] @min-[680px]/ws:min-w-80 @min-[680px]/ws:max-w-[calc(100%-22.5rem)] @min-[680px]/ws:flex-none"
+            className="@container/panel absolute inset-0 z-30 flex min-w-0 flex-col border-l border-hairline bg-background @min-[680px]/ws:relative @min-[680px]/ws:inset-auto @min-[680px]/ws:w-[var(--panel-w)] @min-[680px]/ws:min-w-80 @min-[680px]/ws:max-w-[calc(100%-22.5rem)] @min-[680px]/ws:flex-none"
           >
             <ResizeHandle
               container={container}
@@ -485,6 +533,9 @@ export function ArtifactWorkspace({
                       )}
                     </p>
                   </div>
+                  {selected.mime_type === PPTX_MIME && (
+                    <SlidesExportLink item={selected} />
+                  )}
                   <DownloadLink item={selected} />
                   <CloseButton onClose={close} />
                 </header>
