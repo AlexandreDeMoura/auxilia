@@ -26,7 +26,7 @@ import { usePendingMessageStore } from "@/stores/pending-message-store";
 import type { Run } from "@/types/runs";
 import type { ThreadRead } from "@/types/threads";
 
-import { promptMessageToContent } from "./build-content";
+import { contentPreview, type HumanContent, promptMessageToContent } from "./build-content";
 import { EMPTY_HELD, holdInterrupts } from "./interrupt-hold";
 import { submitPendingAfterHydration } from "./pending-message";
 import {
@@ -39,6 +39,13 @@ import {
 } from "./session-reducer";
 
 const EMPTY_TODOS: Todo[] = [];
+
+/** Messages that may wait behind a running turn. */
+export const QUEUE_LIMIT = 2;
+
+export type QueuedMessage = { id: string; text: string };
+type QueuedEntry = { id: string; content: HumanContent };
+const EMPTY_QUEUE: QueuedEntry[] = [];
 /** Render cadence for the streamed views (tokens arrive far faster). */
 const THROTTLE_MS = 60;
 
@@ -81,6 +88,14 @@ export type ThreadSession = {
 		/** Kept separately: the body renders the two differently. */
 		rehydratedError: string | null;
 	};
+	/** Messages sent while a turn runs, held here and sent in order once it
+	 * ends; `sendNow` interrupts the turn with one. */
+	queue: {
+		messages: QueuedMessage[];
+		full: boolean;
+		sendNow: (id: string) => void;
+		remove: (id: string) => void;
+	};
 	transcript: {
 		messages: BaseMessage[];
 		toolCalls: ToolCallView[];
@@ -98,6 +113,7 @@ export type ThreadSession = {
 		recordDecision: (toolCallId: string, decision: HitlDecision) => void;
 	};
 	actions: {
+		/** Queues behind a running turn (see `queue`); a no-op when it is full. */
 		send: (message: PromptInputMessage) => void;
 		regenerate: () => void;
 		stop: () => void;
@@ -208,14 +224,98 @@ export function useThreadSession({
 		dispatch({ type: "user-acted" });
 	}, []);
 
+	// --- the queue ------------------------------------------------------------
+	// Ours, not the SDK's `enqueue`: that one queues only behind a run this
+	// page started, so after a reload (or a remount) mid-run a message went
+	// straight to the server — sent, but no longer queued or sendable now.
+	// Busy is `isLoading` (also set for a run reattached on load) or one of
+	// our submits not settled yet — `submit()` settles at its run's terminal.
+	// The latter covers "send now": the interrupting submit settles the one
+	// it replaces, which drops `isLoading` until the new run reports in.
+	// Per thread: a submit still settling on the thread left behind must not
+	// hold this one's queue.
+	const [inFlight, setInFlight] = useState<Record<string, number>>({});
+	const busy = stream.isLoading || (inFlight[threadId] ?? 0) > 0;
+
+	const [queueState, setQueueState] = useState<{ threadId: string; items: QueuedEntry[] }>({
+		threadId,
+		items: [],
+	});
+	const queueItems = queueState.threadId === threadId ? queueState.items : EMPTY_QUEUE;
+	const queueFull = queueItems.length >= QUEUE_LIMIT;
+	const queued = useMemo(
+		() => queueItems.map((e) => ({ id: e.id, text: contentPreview(e.content) })),
+		[queueItems],
+	);
+	const setQueue = useCallback(
+		(update: (items: QueuedEntry[]) => QueuedEntry[]) => {
+			setQueueState((q) => ({
+				threadId,
+				items: update(q.threadId === threadId ? q.items : EMPTY_QUEUE),
+			}));
+		},
+		[threadId],
+	);
+
+	const submitContent = useCallback(
+		(content: HumanContent, multitaskStrategy: "enqueue" | "interrupt") => {
+			userActed();
+			const forThread = threadId;
+			setInFlight((counts) => ({ ...counts, [forThread]: (counts[forThread] ?? 0) + 1 }));
+			void selectorStream
+				.submit({ messages: [{ type: "human", content }] }, { multitaskStrategy })
+				.finally(() => {
+					setInFlight((counts) => ({ ...counts, [forThread]: (counts[forThread] ?? 1) - 1 }));
+				});
+		},
+		[selectorStream, threadId, userActed],
+	);
+
 	const send = useCallback(
 		(message: PromptInputMessage) => {
 			const content = promptMessageToContent(message);
 			if (content == null) return;
-			userActed();
-			void selectorStream.submit({ messages: [{ type: "human", content }] });
+			if (busy || queueItems.length > 0) {
+				if (queueFull) return;
+				userActed();
+				// Rechecked here: two sends batched in one render both pass `queueFull`.
+				setQueue((items) =>
+					items.length >= QUEUE_LIMIT ? items : [...items, { id: crypto.randomUUID(), content }],
+				);
+				return;
+			}
+			// `enqueue` server-side too: a run the page cannot see yet still
+			// gets waited on rather than rejected.
+			submitContent(content, "enqueue");
 		},
-		[selectorStream, userActed],
+		[busy, queueItems.length, queueFull, setQueue, submitContent, userActed],
+	);
+
+	// The turn ended (and is not waiting on an approval, its own or a
+	// subagent's): send the next one.
+	const awaitingApproval = isInterrupted || nestedInterrupts.length > 0;
+	useEffect(() => {
+		if (busy || awaitingApproval || queueItems.length === 0) return;
+		const [next] = queueItems;
+		setQueue((items) => items.filter((e) => e.id !== next.id));
+		submitContent(next.content, "enqueue");
+	}, [busy, awaitingApproval, queueItems, setQueue, submitContent]);
+
+	const sendNow = useCallback(
+		(id: string) => {
+			const entry = queueItems.find((e) => e.id === id);
+			if (entry == null) return;
+			setQueue((items) => items.filter((e) => e.id !== id));
+			submitContent(entry.content, "interrupt");
+		},
+		[queueItems, setQueue, submitContent],
+	);
+
+	const removeQueued = useCallback(
+		(id: string) => {
+			setQueue((items) => items.filter((e) => e.id !== id));
+		},
+		[setQueue],
 	);
 
 	const regenerate = useCallback(() => {
@@ -358,6 +458,7 @@ export function useThreadSession({
 			error: stream.error,
 			rehydratedError: state.rehydratedError,
 		},
+		queue: { messages: queued, full: queueFull, sendNow, remove: removeQueued },
 		transcript: { messages, toolCalls, subagents: stream.subagents, todos, stream: selectorStream },
 		hitl: {
 			interrupt,

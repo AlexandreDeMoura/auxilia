@@ -249,8 +249,39 @@ to the channel.
 `reject` (default) — creating a run while one is pending/running for the thread
 raises `DomainValidationError`. `enqueue` — the new run waits as `pending`; the
 claim query skips it until the thread's running run finalizes. No requeue loop,
-no backoff — waiting is a property of the data. (`interrupt`/`rollback` from
-the SDK are out of scope for v1; document if/when added.)
+no backoff — waiting is a property of the data.
+
+`interrupt` — under the per-thread creation lock (taken by every strategy,
+with `created_at` stamped past it so claim order is creation order), the
+thread's pending runs are cancelled in the same transaction as the new run's
+insert; its running run is signalled after the commit (a failed signal is
+logged: the new run then just waits for it). The new run is claimed once the
+cancelled run finalizes; whatever that run checkpointed stays (dangling tool calls are
+patched by the harness, as after a Stop). Any cancel (Interrupt, Stop, the
+wall-clock cap) also saves the root answer as far as it streamed:
+`Agent.stream` catches the `CancelledError` and, shielded, writes the
+`ProtocolEmitter.streamed_answer()` — visible text only, under its streamed
+id, `response_metadata.stop_reason = "interrupted"` — unless the checkpoint
+already has that id. The worker awaits the cancelled task before `finalize`,
+so the save lands before the next run can be claimed. `rollback` is not offered.
+
+The web client sends the strategy as `run.start`'s `multitaskStrategy`. A
+message sent while a turn runs waits in `useThreadSession`'s own queue (at
+most 2, shown above the composer) — not the SDK's client-side `enqueue`
+queue, which only queues behind a run the page itself started. The head is
+sent with `enqueue` once the turn ends (not while an approval is pending);
+a queued message's "Send now" sends it with `interrupt`. Once any newer `interrupt` run
+exists (even behind a queued one), protocol sessions stop relaying the old
+run's log
+(checked every 0.25s while it streams): its remaining tokens would render
+after the user's new message, and its terminal would settle the client's
+watch, which is armed before the new run is dispatched. Cutting it off, the session sends one root `values`
+snapshot listing the thread's messages plus every message the old run
+streamed (empty stubs; the client keeps its streamed copy). The new run's
+first snapshot lists only what was checkpointed, so the client drops what
+was not saved (a reasoning-only or half-streamed tool-call message; a saved
+answer is listed again and stays) — it removes a message only when a snapshot that listed it no
+longer does.
 
 ## Thread status (`threads.last_run_status`)
 
