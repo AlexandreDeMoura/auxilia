@@ -1,0 +1,14 @@
+name: Agent
+entity: true
+is: An assistant of the workspace, defined by its name, look, instructions and capabilities, and owned by the user who created it.
+relations:
+  - belongs to one user, its owner
+  - may carry one tag
+  - may be archived, which hides it without deleting it
+anchors:
+  - label: The stored agent
+    at: backend/app/agents/models.py#AgentDB
+    side: backend
+  - label: The fields every agent has
+    at: backend/app/agents/models.py#AgentBase
+    side: backend

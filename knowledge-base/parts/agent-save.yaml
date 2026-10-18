@@ -1,0 +1,15 @@
+name: Agent save
+is: Stores an agent's whole configuration — identity, instructions, MCP servers, sandbox, subagents and skills — in one go, so a refused part leaves nothing half-saved.
+anchors:
+  - label: The create request
+    at: backend/app/agents/router.py#create_agent
+    side: backend
+  - label: Creating an agent from the whole draft, with its owner
+    at: backend/app/agents/core/service.py#AgentService.create_from_config
+    side: backend
+  - label: What a save may contain, and the values it refuses
+    at: backend/app/agents/schemas.py#AgentConfig
+    side: backend
+  - label: The screen's save call, which also adds the new agent to the gallery
+    at: web/src/stores/agents-store.ts#useAgentsStore
+    side: screen

@@ -1,0 +1,21 @@
+name: Agent editor
+is: The agent page's two panels — identity and instructions on the left, tools, skills and subagents on the right — used to draft a new agent, and to read or edit an existing one.
+anchors:
+  - label: The editor itself, with its header buttons and both panels
+    at: web/src/app/(protected)/agents/components/agent-editor.tsx#AgentEditor
+    side: screen
+  - label: The new agent page, a blank editor
+    at: web/src/app/(protected)/agents/new/page.tsx#NewAgentPage
+    side: screen
+  - label: The blank draft a new agent starts from
+    at: web/src/app/(protected)/agents/lib/agent-form.ts#defaultAgentForm
+    side: screen
+  - label: What the draft sends when it is saved
+    at: web/src/app/(protected)/agents/lib/agent-form.ts#toPayload
+    side: screen
+  - label: An existing agent's page, which opens the editor in read mode
+    at: web/src/app/(protected)/agents/[id]/page.tsx#AgentPage
+    side: screen
+  - label: Read mode and the switch to edit mode
+    at: web/src/app/(protected)/agents/components/agent-detail.tsx#AgentDetail
+    side: screen

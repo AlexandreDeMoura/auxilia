@@ -1,0 +1,12 @@
+name: Workspace roles
+is: Gives every user one workspace role — Member, Editor or Admin — and refuses what their role does not allow.
+anchors:
+  - label: The check that refuses a request from a role too low
+    at: backend/app/auth/dependencies.py#require_role
+    side: backend
+  - label: The New agent button, which stops a Member before the form opens
+    at: web/src/app/(protected)/agents/page.tsx#AgentsPage
+    side: screen
+  - label: The dialog that tells a user their role is too low
+    at: web/src/components/forbidden-error-dialog.tsx#ForbiddenErrorDialog
+    side: screen

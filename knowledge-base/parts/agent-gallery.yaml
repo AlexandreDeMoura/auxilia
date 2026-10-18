@@ -1,0 +1,24 @@
+name: Agent gallery
+is: The Agents page — lists the workspace's agents by tab, search and tag, as a table or as cards, with the viewer's access to each, and opens the one clicked or explains why it cannot.
+anchors:
+  - label: The page, with its tabs, search box, view switch and New agent button
+    at: web/src/app/(protected)/agents/page.tsx#AgentsPage
+    side: screen
+  - label: Picking which agents to show, grouping them by tag, and the empty messages
+    at: web/src/app/(protected)/agents/components/agent-list.tsx#AgentList
+    side: screen
+  - label: A tag's section of cards, cut at seven until See all
+    at: web/src/app/(protected)/agents/components/agent-list.tsx#AgentSection
+    side: screen
+  - label: One agent's card, and what clicking it does
+    at: web/src/app/(protected)/agents/components/agent-card.tsx#AgentCard
+    side: screen
+  - label: The table view, and what clicking a row does
+    at: web/src/app/(protected)/agents/components/agent-table.tsx#AgentTable
+    side: screen
+  - label: The list request
+    at: backend/app/agents/router.py#get_agents
+    side: backend
+  - label: Listing the agents with the viewer's access to each
+    at: backend/app/agents/core/service.py#AgentService.list
+    side: backend

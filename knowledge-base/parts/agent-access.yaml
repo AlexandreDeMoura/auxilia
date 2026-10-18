@@ -1,0 +1,9 @@
+name: Agent access
+is: Works out what one user may do with one agent — owner, Admin, Editor, Member or nothing — from ownership, workspace role, personal grants and teams.
+anchors:
+  - label: The order the levels are decided in
+    at: backend/app/agents/core/service.py#AgentService._resolve_permission
+    side: backend
+  - label: Loading one agent with the viewer's access
+    at: backend/app/agents/core/service.py#AgentService.get
+    side: backend

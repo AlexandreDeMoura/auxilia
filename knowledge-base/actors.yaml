@@ -1,0 +1,9 @@
+member:
+  name: Member
+  is: A user of the workspace with the Member role, who uses the agents they have access to.
+editor:
+  name: Editor
+  is: A user of the workspace with the Editor role, who can also create agents, triggers and skills.
+admin:
+  name: Admin
+  is: A user of the workspace with the Admin role, who can do everything, including managing people, MCP servers and workspace settings.
