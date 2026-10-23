@@ -17,6 +17,7 @@ import {
 } from "@/components/ai-elements/prompt-input";
 import { BrainIcon, CheckIcon, PlugIcon } from "lucide-react";
 import { useRef, useState, useEffect, useMemo } from "react";
+import { toast } from "sonner";
 import { DropdownMenu } from "@/components/ui/dropdown-menu";
 import { useModelsStore } from "@/stores/models-store";
 import { useChatHeaderStore } from "@/stores/chat-header-store";
@@ -49,7 +50,8 @@ const composerPillClass = cn(
 );
 
 interface ChatPromptInputProps {
-	onSubmit: (message: PromptInputMessage) => void;
+	/** A rejected Promise keeps the attachments in the composer, for a retry. */
+	onSubmit: (message: PromptInputMessage) => void | Promise<void>;
 	/** Two messages already wait behind the running turn: Send is disabled. */
 	queueFull?: boolean;
 	status: "submitted" | "streaming" | "ready" | "error";
@@ -63,6 +65,8 @@ interface ChatPromptInputProps {
 	selectedEffort?: string | null;
 	onEffortChange?: (effort: string | null) => void;
 	agentReady?: boolean | null;
+	/** Non-image attachments go to the agent's sandbox (readiness `acceptsFiles`). */
+	acceptsFiles?: boolean;
 	disconnectedServers?: MCPServer[];
 	onAllConnected?: () => void;
 }
@@ -93,6 +97,7 @@ const ChatPromptInput = ({
 	selectedEffort = null,
 	onEffortChange,
 	agentReady,
+	acceptsFiles = false,
 	disconnectedServers = [],
 	onAllConnected,
 }: ChatPromptInputProps) => {
@@ -125,12 +130,21 @@ const ChatPromptInput = ({
 		: effortDefault
 			? effortLabel(effortDefault)
 			: "Auto";
-	// Text-only models can't take image attachments. Per model, not per chef:
-	// e.g. GLM 5.3 Flash accepts images while plain GLM 5.3 does not. Unknown
-	// model (not in the picker list, e.g. a disabled pinned model) → allow,
-	// matching the old lookup-miss behavior.
-	const noAttachments =
-		selectedModelData !== undefined && !selectedModelData.multimodal;
+	// Two independent rules. Images need a model with vision — per model, not
+	// per chef: e.g. GLM 5.3 Flash accepts images while plain GLM 5.3 does not;
+	// an unknown model (not in the picker list, e.g. a disabled pinned model)
+	// is allowed. Any other file needs the agent's sandbox (`acceptsFiles`),
+	// which also takes images as plain files on a model without vision.
+	const vision = selectedModelData === undefined || selectedModelData.multimodal;
+	const noAttachments = !vision && !acceptsFiles;
+	const promptController = usePromptInputController();
+	// Files queued while the agent could take them, and it no longer can.
+	useEffect(() => {
+		if (acceptsFiles) return;
+		for (const file of promptController.attachments.files) {
+			if (!file.mediaType.startsWith("image/")) promptController.attachments.remove(file.id);
+		}
+	}, [acceptsFiles, promptController.attachments]);
 
 	// Editable composer only: normalize a stale selection in the parent state
 	// too (not just the display), so what's shown as Default/Auto is also what
@@ -178,15 +192,22 @@ const ChatPromptInput = ({
 		if (!open) setModelSearch("");
 	};
 
-	const handleSubmit = (message: PromptInputMessage) => {
-		if (!message) return;
+	// A send still uploading its files: submitting again would send them twice.
+	const [uploading, setUploading] = useState(false);
+	const handleSubmit = (message: PromptInputMessage): void | Promise<void> => {
+		if (!message || uploading) return;
 
 		const hasText = Boolean("text" in message && message.text);
 		const hasAttachments = Boolean("files" in message && message.files?.length);
 		if (!(hasText || hasAttachments)) {
 			return;
 		}
-		onSubmit(message);
+		const result = onSubmit(message);
+		if (!(result instanceof Promise)) return result;
+		setUploading(true);
+		return result.finally(() => {
+			setUploading(false);
+		});
 	};
 
 	useEffect(() => {
@@ -201,7 +222,15 @@ const ChatPromptInput = ({
 			<PromptInput
 				globalDrop
 				multiple
+				accept={acceptsFiles ? undefined : "image/*"}
 				disableAttachments={noAttachments}
+				onError={(error) => {
+					toast.error(
+						error.code === "accept"
+							? "Only images can be attached for this agent."
+							: error.message,
+					);
+				}}
 				onSubmit={handleSubmit}
 				className={cn(
 					"min-h-[116px] transition-all duration-200",
@@ -248,7 +277,7 @@ const ChatPromptInput = ({
 									</span>
 								</TooltipTrigger>
 								<TooltipContent>
-									This model does not support attachments.
+									File uploads are unavailable for this model and agent.
 								</TooltipContent>
 							</Tooltip>
 						) : (
@@ -414,7 +443,12 @@ const ChatPromptInput = ({
 							}}
 						/>
 					) : (
-						<SubmitButton status={status} stop={stop} queueFull={queueFull} />
+						<SubmitButton
+							status={status}
+							stop={stop}
+							queueFull={queueFull}
+							uploading={uploading}
+						/>
 					)}
 				</PromptInputFooter>
 			</PromptInput>
@@ -432,21 +466,31 @@ const SubmitButton = ({
 	status,
 	stop,
 	queueFull,
+	uploading,
 }: {
 	status: "submitted" | "streaming" | "ready" | "error";
 	stop?: () => void;
 	queueFull: boolean;
+	uploading: boolean;
 }) => {
 	const controller = usePromptInputController();
 	const hasContent =
 		Boolean(controller.textInput.value.trim()) || controller.attachments.files.length > 0;
 	// While a turn runs, anything to send turns Stop back into Send (it queues).
 	const isStreaming = status === "streaming" && !hasContent;
-	const isDisabled = isStreaming ? false : !hasContent || queueFull;
+	const isDisabled = isStreaming ? false : !hasContent || queueFull || uploading;
 
 	return (
 		<button
-			title={queueFull && !isStreaming ? "Queue is full" : undefined}
+			title={
+				isStreaming
+					? undefined
+					: uploading
+						? "Uploading files…"
+						: queueFull
+							? "Queue is full"
+							: undefined
+			}
 			type={isStreaming ? "button" : "submit"}
 			disabled={isDisabled}
 			onClick={(e) => {

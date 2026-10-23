@@ -30,6 +30,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.core.repository import AgentRepository
 from app.agents.run_spec import AgentSpec
+from app.artifacts.models import ArtifactDB
+from app.artifacts.service import ATTACHMENTS_ROOT, ArtifactService
 from app.artifacts.tool import present_files_tool
 from app.database import AsyncSessionLocal, get_checkpointer
 from app.exceptions import DomainValidationError, NotFoundError
@@ -90,9 +92,37 @@ RECURSION_LIMIT_MESSAGE = (
 
 SANDBOX_REPLACED_NOTICE = (
     "[Host notice] The sandbox used earlier in this conversation no longer "
-    "exists and had no snapshot. A new, empty sandbox has been created: files "
-    "written earlier are gone, so recreate anything you need before using it."
+    "exists and had no snapshot. A new sandbox has been created: only the "
+    "files listed in a host notice are back, anything else written earlier is "
+    "gone, so recreate what you need before using it."
 )
+
+# Static, so the system prompt stays frozen per thread (prompt caching).
+ATTACHMENTS_PROMPT = (
+    f"Files the user attaches to messages are placed in {ATTACHMENTS_ROOT}/ "
+    "on the sandbox disk."
+)
+
+
+def with_attachments_prompt(instructions: str, sandboxed: bool) -> str:
+    return (
+        f"{instructions}\n\n{ATTACHMENTS_PROMPT}".lstrip()
+        if sandboxed
+        else instructions
+    )
+
+
+def _size(size: int) -> str:
+    for unit in ("B", "KB", "MB"):
+        if size < 1024 or unit == "MB":
+            return f"{size} {unit}" if unit == "B" else f"{size:.1f} {unit}"
+        size /= 1024
+    raise AssertionError
+
+
+def files_notice(rows: list[ArtifactDB]) -> str:
+    lines = [f"- {r.source_path} ({r.mime_type}, {_size(r.size)})" for r in rows]
+    return "[Host notice] Files are available on disk:\n" + "\n".join(lines)
 
 
 @dataclass(frozen=True)
@@ -442,7 +472,10 @@ class ResolvedAgent:
             model=model,
             tools=self.live.all,
             artifact_context=artifact_context,
-            system_prompt=self.config.instructions or "",
+            system_prompt=with_attachments_prompt(
+                self.config.instructions or "",
+                sandbox_backend is not None and self.sandbox is not None,
+            ),
             sandbox_backend=sandbox_backend if self.sandbox else None,
             skills=skills,
             base_middleware=build_agent_middleware(
@@ -481,6 +514,8 @@ class Agent:
         self.skills = list(skills)
         # The run's live sandbox, opened by `_setup` for the length of one run.
         self._sandbox: SandboxSession | None = None
+        # Thread files `_open_sandbox` put back on the disk: new to the model.
+        self._restored: list[ArtifactDB] = []
 
     @property
     def metadata(self) -> dict:
@@ -590,12 +625,15 @@ class Agent:
             if self.subagents
             else None
         )
+        sandbox_backend = self._sandbox_for(self.agent)
         return build_runnable(
             model=self.model,
             tools=self.agent.live.all,
             artifact_context=artifact_context,
-            system_prompt=self.agent.config.instructions or "",
-            sandbox_backend=self._sandbox_for(self.agent),
+            system_prompt=with_attachments_prompt(
+                self.agent.config.instructions or "", sandbox_backend is not None
+            ),
+            sandbox_backend=sandbox_backend,
             skills=skills,
             base_middleware=self.middleware,
             subagents=compiled,
@@ -711,13 +749,19 @@ class Agent:
             await self._open_sandbox()
             agent = self._build_agent(checkpointer, output_schema)
             resolved_input = self._resolve_input(agent_input, command)
+            config, resolved_input = await self._resolve_config(
+                agent, checkpointer, trigger, config_overrides, resolved_input
+            )
+            # After `_resolve_config`: a notice must not count as the input a
+            # no-input regeneration replaces with the user's message.
+            if self._restored:
+                resolved_input = _with_host_notice(
+                    resolved_input, files_notice(self._restored), "files_restored"
+                )
             if self._sandbox is not None and self._sandbox.replaced:
                 resolved_input = _with_host_notice(
                     resolved_input, SANDBOX_REPLACED_NOTICE, "sandbox_replaced"
                 )
-            config, resolved_input = await self._resolve_config(
-                agent, checkpointer, trigger, config_overrides, resolved_input
-            )
             yield agent, resolved_input, config
 
     async def _persist_sandbox(self) -> None:
@@ -780,6 +824,13 @@ class Agent:
         await asyncio.to_thread(
             upload_skills, session.backend, skill_files(self.skills)
         )
+        # The thread's attachments and artifacts outlive its sandbox: put back
+        # whatever this disk lacks. Own transaction, like `_remember_sandbox`.
+        async with AsyncSessionLocal() as db:
+            self._restored = await ArtifactService(db).restore(
+                self.thread.id, session.backend, source.row_id
+            )
+            await db.commit()
         self._sandbox = session
 
     async def _remember_sandbox(self, sandbox_id: str, source_id) -> None:

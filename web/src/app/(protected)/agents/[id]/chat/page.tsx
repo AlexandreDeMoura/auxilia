@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { useParams, useRouter } from "next/navigation";
 import {
 	type PromptInputMessage,
@@ -44,6 +45,7 @@ const StarterChatPage = () => {
 		ready: agentReady,
 		status,
 		detail: statusDetail,
+		acceptsFiles,
 		disconnectedMcpServers,
 		refetch: refetchReady,
 	} = useAgentReadiness(agentId);
@@ -67,9 +69,9 @@ const StarterChatPage = () => {
 
 		setIsCreating(true);
 
+		// Generate thread ID on frontend
+		const threadId = generateUuid();
 		try {
-			// Generate thread ID on frontend
-			const threadId = generateUuid();
 
 			// Store the pending message (with files) to be consumed by the thread page
 			setPendingMessage(threadId, message);
@@ -98,6 +100,11 @@ const StarterChatPage = () => {
 		} catch (error) {
 			console.error("Error creating thread:", error);
 			setIsCreating(false);
+			// The parked copy belongs to a thread that was never created.
+			usePendingMessageStore.getState().consumePendingMessage(threadId);
+			toast.error("Could not start the conversation. Try again.");
+			// Rejected, so the composer keeps the draft for a retry.
+			throw error;
 		}
 	};
 
@@ -185,9 +192,7 @@ const StarterChatPage = () => {
 						/>
 					) : (
 						<ChatPromptInput
-							onSubmit={(message) => {
-								void handleSubmit(message);
-							}}
+							onSubmit={(message) => handleSubmit(message)}
 							status={isCreating ? "streaming" : "ready"}
 							className="w-full"
 							selectedModel={selectedModel}
@@ -200,6 +205,7 @@ const StarterChatPage = () => {
 							selectedEffort={reasoningEffort}
 							onEffortChange={setReasoningEffort}
 							agentReady={agentReady}
+							acceptsFiles={acceptsFiles}
 							disconnectedServers={disconnectedMcpServers}
 							onAllConnected={() => {
 								refetchReady();
