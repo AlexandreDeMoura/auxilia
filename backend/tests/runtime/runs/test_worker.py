@@ -593,3 +593,194 @@ async def test_a_saturated_dispatcher_stays_healthy(
             await task
 
     assert dispatcher.health.is_healthy() is True
+
+
+# ---------------------------------------------------------------------------
+# The Redis wake-up: an idle dispatcher stays off Postgres
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def dispatcher(redis, monkeypatch, isolated_registry):
+    """A dispatcher with a fast wake poll, a far fallback, and a spy counting
+    `claim_next` (the Postgres query)."""
+    monkeypatch.setattr(run_settings, "wake_poll_seconds", 0.005)
+    monkeypatch.setattr(run_settings, "claim_fallback_seconds", 60.0)
+    dispatcher = RunDispatcher(redis)
+    calls = []
+    inner = dispatcher.service.claim_next
+
+    async def _spy():
+        calls.append(1)
+        return await inner()
+
+    monkeypatch.setattr(dispatcher.service, "claim_next", _spy)
+    dispatcher.claims = calls
+    return dispatcher
+
+
+class _dispatching:
+    """Run the dispatcher loop for the block, then stop it."""
+
+    def __init__(self, dispatcher: RunDispatcher):
+        self.dispatcher = dispatcher
+
+    async def __aenter__(self):
+        self.task = asyncio.create_task(self.dispatcher.run())
+
+    async def __aexit__(self, *exc):
+        await self.dispatcher.stop(drain_timeout=0.5)
+        self.task.cancel()
+        with suppress(asyncio.CancelledError):
+            await self.task
+
+
+async def _one(calls) -> bool:
+    return len(calls) == 1
+
+
+async def test_an_idle_dispatcher_stays_off_postgres(dispatcher, until):
+    async with _dispatching(dispatcher):
+        # The first pass claims unconditionally (the fallback is due at boot).
+        await until(lambda: _one(dispatcher.claims), what="the boot claim")
+        await asyncio.sleep(0.1)  # ~20 wake polls
+
+    assert len(dispatcher.claims) == 1
+
+
+async def test_a_wake_token_triggers_a_claim(dispatcher, redis, until):
+    async with _dispatching(dispatcher):
+        await until(lambda: _one(dispatcher.claims), what="the boot claim")
+        await redis.rpush(keys.dispatch_wake_key(), "1")
+
+        async def _claimed_again() -> bool:
+            return len(dispatcher.claims) == 2
+
+        await until(_claimed_again, what="a claim on the token", seconds=0.2)
+    assert await redis.llen(keys.dispatch_wake_key()) == 0
+
+
+async def test_the_fallback_claims_without_a_token(dispatcher, monkeypatch, until):
+    monkeypatch.setattr(run_settings, "claim_fallback_seconds", 0.03)
+    async with _dispatching(dispatcher):
+
+        async def _three() -> bool:
+            return len(dispatcher.claims) >= 3
+
+        await until(_three, what="fallback claims")
+
+
+@pytest.mark.usefixtures("patch_agent")
+async def test_a_successful_claim_drains_without_more_tokens(
+    dispatcher, redis, until, monkeypatch
+):
+    service = dispatcher.service
+    async with _dispatching(dispatcher):
+        await until(lambda: _one(dispatcher.claims), what="the boot claim")
+        a = await service.create(thread_id="ta", user_id=str(uuid4()))
+        b = await service.create(thread_id="tb", user_id=str(uuid4()))
+        # From here on nothing signals (finalize would push a token per run),
+        # so the second claim can only come from the drain path.
+        monkeypatch.setattr(service, "_signal_dispatch", _no_signal)
+        await redis.delete(keys.dispatch_wake_key())
+        await redis.rpush(keys.dispatch_wake_key(), "1")
+
+        async def _both_done() -> bool:
+            done = [(await service.get(r.id)).status for r in (a, b)]
+            return done == [RunStatus.success, RunStatus.success]
+
+        await until(_both_done, what="both runs to be claimed and finished")
+    # Every pass that held a slot popped a token: the seeded one is used up.
+    assert await redis.llen(keys.dispatch_wake_key()) == 0
+
+
+async def _no_signal(*_, **__) -> None:
+    pass
+
+
+async def test_a_failed_claim_retries_promptly(dispatcher, monkeypatch, until):
+    """A transient DB error consumed the token that triggered the claim; the
+    retry must not wait for the 10 s fallback."""
+    inner = dispatcher.service.claim_next
+    failures = iter([RuntimeError("db hiccup")])
+
+    async def _flaky():
+        dispatcher.claims.append(1)
+        for exc in failures:
+            raise exc
+        return await inner()
+
+    monkeypatch.setattr(dispatcher.service, "claim_next", _flaky)
+    async with _dispatching(dispatcher):
+
+        async def _retried() -> bool:
+            return len(dispatcher.claims) >= 2
+
+        await until(_retried, what="a prompt retry after a failed claim", seconds=0.2)
+
+
+async def test_a_saturated_dispatcher_does_not_consume_tokens(
+    redis, monkeypatch, isolated_registry
+):
+    monkeypatch.setattr(run_settings, "wake_poll_seconds", 0.005)
+    monkeypatch.setattr(run_settings, "worker_concurrency", 1)
+    dispatcher = RunDispatcher(redis)
+    await dispatcher._semaphore.acquire()  # every slot busy
+    await redis.rpush(keys.dispatch_wake_key(), "1")
+
+    async with _dispatching(dispatcher):
+        await asyncio.sleep(0.05)
+
+    assert await redis.llen(keys.dispatch_wake_key()) == 1
+
+
+@pytest.mark.usefixtures("patch_agent")
+async def test_the_first_pass_claims_a_run_created_before_start(
+    dispatcher, redis, until
+):
+    service = dispatcher.service
+    run = await service.create(thread_id="t1", user_id=str(uuid4()))
+    await redis.delete(keys.dispatch_wake_key())  # no token: the boot pass alone
+
+    async with _dispatching(dispatcher):
+
+        async def _done() -> bool:
+            return (await service.get(run.id)).status == RunStatus.success
+
+        await until(_done, what="the boot pass to claim the run")
+
+
+async def test_a_redis_error_on_the_pop_does_not_stop_dispatch(
+    dispatcher, redis, monkeypatch, until
+):
+    monkeypatch.setattr(run_settings, "claim_fallback_seconds", 0.03)
+
+    async def _down(*_, **__):
+        raise ConnectionError("redis down")
+
+    monkeypatch.setattr(redis, "lpop", _down)
+    async with _dispatching(dispatcher):
+
+        async def _two() -> bool:
+            return len(dispatcher.claims) >= 2
+
+        await until(_two, what="the fallback to claim despite a dead LPOP")
+
+
+async def test_a_due_fallback_does_not_wait_for_redis(
+    dispatcher, redis, monkeypatch, until
+):
+    """A stalled Redis must not postpone the scheduled Postgres claim: a pass
+    whose fallback is due claims without touching the wake list."""
+    monkeypatch.setattr(run_settings, "claim_fallback_seconds", 0.03)
+
+    async def _hangs(*_, **__):
+        await asyncio.sleep(60)
+
+    monkeypatch.setattr(redis, "lpop", _hangs)
+    async with _dispatching(dispatcher):
+
+        async def _two() -> bool:
+            return len(dispatcher.claims) >= 2
+
+        await until(_two, what="the fallback to claim past a hanging LPOP")
