@@ -51,6 +51,32 @@ The API will be available at `http://localhost:8000`
 
 API documentation: `http://localhost:8000/docs`
 
+## Model whitelist
+
+The effective model whitelist starts with `app/model_providers/whitelist.yaml`,
+bundled with the release. The hosted YAML at `MODEL_WHITELIST_URL` extends and
+overrides that list by `model_id`: bundled-only models stay available to enable,
+hosted-only models are added, and a hosted entry replaces the entire matching
+entry (including prices, flags and reasoning-effort defaults). Ordering is
+deterministic: bundled order first, then hosted-only models in file order.
+
+Reads use a short process memo, Redis, the hosted file, Redis `last_good`, then
+the bundle. Every usable hosted list is merged, including cached and `last_good`
+copies. Validation is all-or-nothing per file: a failed fetch or invalid hosted
+file falls back to `last_good` merged with the bundle, or just the bundle if no
+good copy exists. Setting `MODEL_WHITELIST_URL` to an empty string serves only
+the bundle and bypasses Redis and the hosted file.
+
+**Sync catalog** force-fetches and reports additions, removals and the model
+count from the merged list; a failed sync reports an error and keeps the previous
+catalog. A stale hosted file cannot remove a model shipped in the release.
+Removing a bundled model requires a release; an admin can block it immediately
+by disabling it in **Settings → Models**. Models still require a provider API
+key and admin enablement before they can run.
+
+This merge is opt-in via `RemoteCatalog(merge_with_bundled=True)`. The official
+MCP server catalog retains its existing replacement/fallback behavior.
+
 ## Conversation cost estimates
 
 `GET /threads/{thread_id}/cost` returns a conversation estimate, including
@@ -60,9 +86,9 @@ subagents and per-message breakdowns. `GET
 permissions as the conversation state endpoint. Costs are computed on demand;
 these GET routes do not store message costs or change checkpoints.
 
-Add optional `prices` to model entries in the model whitelist (the CDN document
-when configured, or `app/model_providers/whitelist.yaml` for the bundled
-fallback). Rates are **USD per token**, following Langfuse’s `prices` usage-type
+Add optional `prices` to model entries in the model whitelist (the hosted document
+for overrides, or `app/model_providers/whitelist.yaml` for the bundled baseline).
+Rates are **USD per token**, following Langfuse’s `prices` usage-type
 keys; all three are required,
 nonnegative finite decimal values. Model picker and management responses expose
 this metadata. See [Langfuse’s usage-key conventions](https://github.com/langfuse/langfuse/blob/main/.agents/skills/add-model-price/references/provider-usage-key-matrix.md).

@@ -12,6 +12,14 @@ freshest first:
 4. ``<prefix>:last_good`` (no TTL — the last file that validated)
 5. the bundled snapshot shipped with the backend
 
+By default these layers select a single list (the official MCP catalog keeps
+this behavior). With ``merge_with_bundled=True``, the bundled snapshot is a
+baseline: validated hosted entries extend it and replace matching identity keys.
+Bundled order is preserved, followed by hosted-only entries in file order. This
+applies to fresh fetches, Redis and last_good; the memo holds the merged result.
+Redis stores only hosted entries so different releases use their own baseline.
+Without a URL or any usable hosted file, only the bundled snapshot is served.
+
 The long TTL makes propagation admin-driven: editing the CDN file does nothing
 until an admin hits the sync endpoint, which force-fetches, raises on failure
 instead of falling back, and returns the diff. The CDN is never on a request hot
@@ -64,6 +72,9 @@ class RemoteCatalog(Generic[T]):
     ``url`` is a callable, not a string, so the setting is read at call time
     (settings objects are module-level singletons, but tests and env reloads
     shouldn't be baked into a catalog built at import time).
+
+    ``merge_with_bundled`` opts into a bundled baseline with hosted overrides
+    by ``key``. Sync diffs and counts then describe the merged, effective list.
     """
 
     def __init__(
@@ -75,6 +86,7 @@ class RemoteCatalog(Generic[T]):
         key: Callable[[T], str],
         url: Callable[[], str | None],
         bundled_path: Path,
+        merge_with_bundled: bool = False,
         ttl_seconds: int = TTL_SECONDS,
         memo_ttl_seconds: int = MEMO_TTL_SECONDS,
     ) -> None:
@@ -84,6 +96,7 @@ class RemoteCatalog(Generic[T]):
         self._key = key
         self._url = url
         self._bundled_path = bundled_path
+        self._merge_with_bundled = merge_with_bundled
         self._ttl_seconds = ttl_seconds
         self._memo_ttl_seconds = memo_ttl_seconds
         # (stored_at, source_url, items) — the url is part of the memo identity
@@ -118,11 +131,20 @@ class RemoteCatalog(Generic[T]):
         return f"{self._scope()}:lock"
 
     def bundled(self) -> list[T]:
-        """The snapshot shipped with the backend — the fallback of last resort."""
+        """The shipped snapshot: merge baseline or fallback of last resort."""
         return self._parse(self._bundled_path.read_text(encoding="utf-8"))
 
     def invalidate_memo(self) -> None:
         self._memo = None
+
+    def _effective(self, items: list[T]) -> list[T]:
+        if not self._merge_with_bundled:
+            return items
+        # Replacing an existing key preserves its bundled position; new keys
+        # follow in hosted order. Overrides replace the entire validated entry.
+        merged = {self._key(item): item for item in self.bundled()}
+        merged.update((self._key(item), item) for item in items)
+        return list(merged.values())
 
     def _dumps(self, items: list[T]) -> str:
         return json.dumps([item.model_dump(mode="json") for item in items])
@@ -191,7 +213,7 @@ class RemoteCatalog(Generic[T]):
             await self._release(lock)
 
     async def get(self) -> list[T]:
-        """The current catalog, through memo → Redis → CDN → last_good → bundled."""
+        """Read memo → Redis → CDN → last_good → bundled, merging when opted in."""
         url = self.url
         if (
             self._memo is not None
@@ -222,8 +244,7 @@ class RemoteCatalog(Generic[T]):
 
         # No URL configured means "bundled snapshot only" — never serve a
         # Redis entry left over from a previously configured URL.
-        if items is None:
-            items = self.bundled()
+        items = self.bundled() if items is None else self._effective(items)
         self._memo = (monotonic(), url, items)
         return items
 
@@ -233,6 +254,7 @@ class RemoteCatalog(Generic[T]):
         Unlike ``get`` this RAISES on failure (the admin pressed the button; they
         need to know) and returns the diff vs the previously served list. Callers
         translate ``ValueError`` / ``httpx.HTTPError`` into a domain exception.
+        When merging is enabled, both sides of the diff include the bundle.
         """
         url = self.url
         if url is None:
@@ -253,6 +275,7 @@ class RemoteCatalog(Generic[T]):
             await self._release(lock)
         self.invalidate_memo()
 
+        items = self._effective(items)
         previous_keys = {self._key(item) for item in previous}
         current_keys = {self._key(item) for item in items}
         return SyncResult(

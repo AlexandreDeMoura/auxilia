@@ -1,10 +1,17 @@
 """The auxilia model whitelist — the curated list of models we can offer.
 
-The canonical file is external (a hand-editable YAML behind a CDN,
-``MODEL_WHITELIST_URL``) so adding a model doesn't require a release. Caching,
-fallback and admin-sync mechanics live in ``app.utils.remote_catalog``; this
-module owns only what is model-specific: the entry shape, the validation rules,
-and the bundled snapshot.
+The bundled snapshot is the baseline. A hand-editable YAML behind a CDN
+(``MODEL_WHITELIST_URL``) extends and overrides it by ``model_id``, so a stale
+hosted file never hides models shipped in the release. Hosted entries replace
+the whole matching entry, including prices, flags and effort defaults. Bundled
+order comes first, then hosted-only models in file order. Removing a bundled
+model requires a release; admins can disable it immediately.
+
+Caching, fallback and admin-sync mechanics live in ``app.utils.remote_catalog``.
+Fresh fetches, Redis and last_good all merge with the bundle; no URL or no usable
+hosted file means bundled only. Each file is validated all-or-nothing, and sync
+diffs describe the merged list. This module owns the model-specific entry shape,
+validation rules and bundled snapshot.
 """
 
 from pathlib import Path
@@ -33,8 +40,7 @@ SUPPORTED_PROVIDERS: frozenset[str] = frozenset(
 # model's levels means its thinking can be turned off entirely.
 ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh", "max"]
 
-# The single copy of the whitelist: bundled into the image as the offline
-# fallback and uploaded as-is to the CDN (`MODEL_WHITELIST_URL`).
+# The release's baseline, also usable as a source for the hosted whitelist.
 _BUNDLED_PATH = Path(__file__).parent / "whitelist.yaml"
 
 
@@ -142,16 +148,17 @@ _catalog: RemoteCatalog[SupportedModel] = RemoteCatalog(
     key=lambda m: m.model_id,
     url=lambda: model_provider_settings.model_whitelist_url,
     bundled_path=_BUNDLED_PATH,
+    merge_with_bundled=True,
 )
 
 
 def bundled_whitelist() -> list[SupportedModel]:
-    """The snapshot shipped with the backend — the fallback of last resort."""
+    """The release's baseline, served alone when no hosted list is available."""
     return _catalog.bundled()
 
 
 async def get_whitelist() -> list[SupportedModel]:
-    """The current whitelist, through memo → Redis → CDN → last_good → bundled."""
+    """The bundled whitelist extended and overridden by the cached hosted list."""
     return await _catalog.get()
 
 
@@ -159,7 +166,8 @@ async def sync_whitelist() -> dict:
     """Admin-triggered refresh: force-fetch, validate, overwrite the cache.
 
     Unlike the lazy path this RAISES on failure (the admin pressed the button;
-    they need to know) and returns the diff vs the previously served list.
+    they need to know) and returns the diff between the merged lists, so a stale
+    hosted file never reports a bundled model as removed.
     """
     if not _catalog.url:
         raise DomainValidationError(
