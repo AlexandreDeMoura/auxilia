@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.24](https://github.com/AlexandreDeMoura/auxilia/compare/backend-v0.9.23...backend-v0.9.24) (2026-11-07)
+
+
+### Bug Fixes
+
+* **models:** merge hosted whitelist with bundled catalog ([f3d1633](https://github.com/AlexandreDeMoura/auxilia/commit/f3d16330cedf8da3d164bd124adb64650fde6a77))
+
 ## [0.9.23](https://github.com/keurcien/auxilia/compare/backend-v0.9.22...backend-v0.9.23) (2026-10-28)
 
 
